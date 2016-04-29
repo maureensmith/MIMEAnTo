@@ -1,0 +1,2 @@
+Forward: 46 nt
+Backword: 45 nt
