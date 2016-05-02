@@ -333,8 +333,8 @@ void MIMEMainWindow::on_resultDirPushButton_clicked()
 
     // if parameter file exists in result dir: offer to read them
 //    ui->loadProjectPushButton->setEnabled(ioTools::fileExists(ui->resultDirLineEdit->text().toStdString(), "parameter.txt"));
-    ui->loadProjectPushButton->setEnabled(ioTools::dirExists(dir.toStdString()));
 
+        ui->loadProjectPushButton->setEnabled(ioTools::dirExists(dir.toStdString()));
 }
 
 void MIMEMainWindow::on_addRowPushButton_clicked()
@@ -634,7 +634,16 @@ void MIMEMainWindow::on_loadProjectPushButton_clicked()
         QApplication::setOverrideCursor(Qt::WaitCursor);
         MIMEMainWindow::enableSanitySaveButtons(false);
         //read parameter file (which also contains reference and sampleFiles)
-        if(ioTools::readParameterFile(fileName.toStdString(), parameter, data))
+
+        bool readSuccessful = false;
+        try {
+            readSuccessful = ioTools::readParameterFile(fileName.toStdString(), parameter, data);
+        } catch(...)
+        {
+            QApplication::restoreOverrideCursor();
+            Messages::projectFileReadCritical();
+        }
+        if(readSuccessful)
         {
             try {
 
@@ -686,10 +695,6 @@ void MIMEMainWindow::on_loadProjectPushButton_clicked()
                 Messages::sampleDataIsWrongCritical();
             }
 
-        } else
-        {
-            Messages::couldNotOpenFileCritical(fileName);
-            QApplication::restoreOverrideCursor();
         }
         QApplication::restoreOverrideCursor();
     }

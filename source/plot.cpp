@@ -28,7 +28,7 @@ namespace plot {
 		Gnuplot *gp;
         createDirs(resDir);
 
-#ifdef _WIN32
+#ifdef _WIN32 || _WIN64
         fs::path gpFile(resDir+"/tmp/mutRateBoxPlot.gp");
         //std::string gnuplotCall = "\".\\gnuplot\\bin\\gnuplot.exe\"";
         std::string gnuplotCall = ">"+gpFile.string();
@@ -211,8 +211,8 @@ namespace plot {
         delete gp;
 
         //Workaround: last <\svg> not added if piped to exe. So: save as gp file and call exe with gp file
-#ifdef _WIN32
-        std::string gnuplotExe = "./gnuplot/bin/gnuplot.exe " + gpFile.string();
+#ifdef _WIN32 || _WIN64
+        std::string gnuplotExe = "\".\\gnuplot\\bin\\gnuplot.exe " + gpFile.string() + "\"";
         std::system(gnuplotExe.c_str());
 #endif
 
@@ -299,7 +299,7 @@ namespace plot {
 
         Gnuplot* gp;
         fs::path* file;
-#ifdef _WIN32
+#ifdef _WIN32 || _WIN64
         fs::path gpFile(resDir+"/tmp/mutRateBoxPlot.gp");
         std::string gnuplotCall = ">"+gpFile.string();
 #else
@@ -359,8 +359,8 @@ namespace plot {
         delete gp;
 
         //Workaround: last <\svg> not added if piped to exe. So: save as gp file and call exe with gp file
-#ifdef _WIN32
-        std::string gnuplotExe = "./gnuplot/bin/gnuplot.exe " + gpFile.string();
+#ifdef _WIN32 || _WIN64
+        std::string gnuplotExe = "\".\\gnuplot\\bin\\gnuplot.exe " + gpFile.string() + "\"";
         std::system(gnuplotExe.c_str());
 #endif
 
@@ -385,7 +385,7 @@ namespace plot {
         Gnuplot* gp;
         fs::path* file;
 
-#ifdef _WIN32
+#ifdef _WIN32 || _WIN64
         fs::path gpFile(resDir+"/tmp/mutRateBoxPlot.gp");
         std::string gnuplotCall = ">"+gpFile.string();
 #else
@@ -625,8 +625,8 @@ namespace plot {
         delete gp;
 		
         //Workaround: last <\svg> not added if piped to exe. So: save as gp file and call exe with gp file
-#ifdef _WIN32
-        std::string gnuplotExe = "./gnuplot/bin/gnuplot.exe " + gpFile.string();
+#ifdef _WIN32 || _WIN64
+        std::string gnuplotExe = "\".\\gnuplot\\bin\\gnuplot.exe " + gpFile.string() + "\"";
         std::system(gnuplotExe.c_str());
 #endif
 
@@ -798,7 +798,7 @@ namespace plot {
 		Gnuplot* gp;
 		fs::path* file;
 
-#ifdef _WIN32
+#ifdef _WIN32 || _WIN64
         fs::path gpFile(resDir+"/tmp/mutRateBoxPlot.gp");
         std::string gnuplotCall = ">"+gpFile.string();
 #else
@@ -1037,8 +1037,8 @@ namespace plot {
         delete gp;
 
         //Workaround: last <\svg> not added if piped to exe. So: save as gp file and call exe with gp file
-#ifdef _WIN32
-        std::string gnuplotExe = "./gnuplot/bin/gnuplot.exe " + gpFile.string();
+#ifdef _WIN32 || _WIN64
+        std::string gnuplotExe = "\".\\gnuplot\\bin\\gnuplot.exe " + gpFile.string() + "\"";
         std::system(gnuplotExe.c_str());
 #endif
 
