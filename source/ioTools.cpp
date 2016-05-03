@@ -211,7 +211,6 @@ namespace ioTools {
         fs::path posFile(expDir+"/"+bc+".txt");
 //        fs::path posFile(expDir+"/tg"+bc+"_1D.txt");
         if(fs::exists(posFile) && fs::is_regular_file(posFile)) {
-// 			std::cout << posFile << std::endl;
             fs::ifstream infile(posFile.string());
             if (infile.good()) {
                 string line;
@@ -688,13 +687,7 @@ namespace ioTools {
 //                    else if(splittedLine[0] == "barcodeFile")
 //                        param.barcodeFile = splittedLine[1];
                     else if(splittedLine[0] == "alpha")
-                    {
-                        std::cout << "alpha " << splittedLine[1] << std::endl;
-                        double blub = boost::lexical_cast<double>(splittedLine[1]);
-                        std::cout << "alpha " << blub << std::endl;
                         param.alpha = boost::lexical_cast<double>(splittedLine[1]);
-                        std::cout << "ok " << std::endl;
-                    }
                     else if(splittedLine[0] == "cutValueBwd")
                         param.cutValueBwd = std::stoi(splittedLine[1]);
                     else if(splittedLine[0] == "cutValueFwd")
@@ -703,18 +696,14 @@ namespace ioTools {
                         param.minimumNrCalls = std::stoi(splittedLine[1]);
                     else if(splittedLine[0] == "minNumberEstimatableKds")
                         param.minNumberEstimatableKDs = std::stoi(splittedLine[1]);
-                    else if(splittedLine[0] == "minSignal2NoiseStrength") {
-                        std::cout << "s2n " << splittedLine[1] << std::endl;
+                    else if(splittedLine[0] == "minSignal2NoiseStrength")
                         param.minSignal2NoiseStrength = boost::lexical_cast<double>(splittedLine[1]);
-                    }
                     else if(splittedLine[0] == "seqBegin")
                         param.seqBegin = std::stoi(splittedLine[1]);
                     else if(splittedLine[0] == "seqEnd")
                         param.seqEnd = std::stoi(splittedLine[1]);
-                    else if(splittedLine[0] == "weightThreshold") {
-                        std::cout << "weight " << splittedLine[1] << std::endl;
+                    else if(splittedLine[0] == "weightThreshold")
                         param.weightThreshold = boost::lexical_cast<double>(splittedLine[1]);
-                    }
                     else if(splittedLine[0] == "joinErrors")
                          std::istringstream(splittedLine[1]) >> std::boolalpha >> param.joinErrors;
                     else if(splittedLine[0] == "plotYAxisFrom")
