@@ -9,7 +9,7 @@
 //#include "boost/filesystem/fstream.hpp"
 //#include <boost/algorithm/string/join.hpp>
 //#include <boost/regex.hpp>
-#include <omp.h>
+//#include <omp.h>
 
 //namespace fs = boost::filesystem;
 namespace processing {
@@ -667,11 +667,10 @@ namespace processing {
                             double perc5;
 
                             if(data.numberOfKDs[pos1][mut] > 0 && !(validKdsForPercentile[mut]).empty()) {
+
                                 median = utils::getPercentile(validKdsForPercentile[mut], 50);
                                 perc95 = utils::getPercentile(validKdsForPercentile[mut], 95);
                                 perc5 = utils::getPercentile(validKdsForPercentile[mut], 5);
-
-
 
         //                        #pragma omp parallel for schedule(guided, 10) default(none) shared(std::cout, param, data, mut, pos1, median, perc95, perc5, numberOfKDs_smallerZero, numberOfKDs_greaterZero, lowerBoundIdx)
                                 for(unsigned int i=0; i<lowerBoundIdx[mut].size(); ++i) {
@@ -679,10 +678,10 @@ namespace processing {
 
                                     if(data.numberOfKDs[pos1][mut] == 0)
                                         data.totalRelKD_perPos[pos1][mut][idx] = std::numeric_limits<double>::quiet_NaN();
-                                    else if(param.putMedian)
-                                        data.totalRelKD_perPos[pos1][mut][idx] = median;
                                     else
-                                        data.totalRelKD_perPos[pos1][mut][idx] = perc95;
+                                        data.totalRelKD_perPos[pos1][mut][idx] = median;
+//                                    else
+//                                        data.totalRelKD_perPos[pos1][mut][idx] = perc95;
                                     //count number of resamplings (which are not nan) and numbers of binding increasing and decreasing mutations
                                     double KDvalue_log2 = log2(data.totalRelKD_perPos[pos1][mut][idx]);
                                     //careful: not all compiler like isnan
@@ -704,10 +703,10 @@ namespace processing {
 
                                     if(data.numberOfKDs[pos1][mut] == 0)
                                         data.totalRelKD_perPos[pos1][mut][idx] = std::numeric_limits<double>::quiet_NaN();
-                                    else if(param.putMedian)
-                                        data.totalRelKD_perPos[pos1][mut][idx] = median;
                                     else
-                                        data.totalRelKD_perPos[pos1][mut][idx] = perc5;
+                                        data.totalRelKD_perPos[pos1][mut][idx] = median;
+//                                    else
+//                                        data.totalRelKD_perPos[pos1][mut][idx] = perc5;
 
                                     //count number of ressamplings (which are not nan) and numbers of binding increasing and decreasing mutations
                                     double KDvalue_log2 = log2(data.totalRelKD_perPos[pos1][mut][idx]);

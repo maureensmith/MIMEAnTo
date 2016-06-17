@@ -10,10 +10,18 @@
 #include <iomanip>
 #include <boost/filesystem.hpp>
 #include "boost/filesystem/fstream.hpp"
-#include <mimeexception.h>
+#include <mimeexception.hpp>
 namespace fs = boost::filesystem;
 
 namespace ioTools {
+
+    std::string createDir(const std::string& resDir) {
+        fs::path resultDirPath(resDir);
+        if(!fs::is_directory(resultDirPath))
+            fs::create_directory(resultDirPath);
+        //return matching string for the platform
+        return resultDirPath.string();
+    }
 
     void printMapOfVector(utils::ratesPerPos& mapOfVector, const string& filename, const string& resultDir) {
         fs::path file(resultDir +"/"+ filename);
@@ -57,6 +65,19 @@ namespace ioTools {
 
             }
 
+        }
+        outfile.close();
+    }
+
+
+    //write all caught exceptions and other messages into a log file
+    void writeErrorLog(const string& resultDir, const std::string& text)
+    {
+        createDir(resultDir+"/tmp");
+        fs::path errorLogFile(resultDir+"/tmp/error.log");
+        fs::ofstream outfile(errorLogFile.string(), std::ofstream::out | std::ofstream::app);
+        if(outfile.good()) {
+                outfile << text << std::endl;
         }
         outfile.close();
     }
@@ -275,10 +296,7 @@ namespace ioTools {
 
     void writeErrorEstimates(const string& resultDir, utils::DataContainer& data) {
         std::cout << "Write Error Estimates... " << std::endl;
-        fs::path errorDirPath(resultDir+"/errors");
-        if(!fs::is_directory(errorDirPath))
-            fs::create_directory(errorDirPath);
-        std::string errorDir = errorDirPath.string();
+        std::string errorDir = createDir(resultDir+"/errors");
         printMapOfVector(data.medianExpKappaBound_perBase, "errorEstimatesPerBaseSelected.csv", errorDir);
         printMapOfVector(data.medianExpKappaUnbound_perBase, "errorEstimatesPerBaseNonselected.csv", errorDir);
 //        printMapOfDouble(data.medianExpKappa_Total, "errorEstimatesTotal.csv", resultDir);
@@ -460,10 +478,7 @@ namespace ioTools {
     }
 
     void writeRawKDCriteria(const string& resDir, utils::DataContainer& data, const string& filename) {
-        fs::path resultDirPath(resDir+"/KdResults");
-        if(!fs::is_directory(resultDirPath))
-            fs::create_directory(resultDirPath);
-        std::string resultDir = resultDirPath.string();
+        std::string resultDir = createDir(resDir+"/KdResults");
         writeRawKDValues(resultDir, data, filename);
         writeSignal2Noise(resultDir, data);
         writePositionWeights(resultDir, data);

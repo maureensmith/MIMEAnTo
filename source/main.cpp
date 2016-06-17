@@ -1,9 +1,8 @@
-#include "mimemainwindow.h"
+#include "mimemainwindow.hpp"
 #include <QApplication>
 
 int main(int argc, char *argv[])
 {
-
     int currentExitCode = 0;
     do
     {

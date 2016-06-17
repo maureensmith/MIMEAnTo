@@ -5,6 +5,7 @@
 //#include <boost/regex.hpp>
 #include <valarray>
 #include <iostream>
+#include <vector>
 #include <map>
 namespace utils {
 	
@@ -355,23 +356,13 @@ namespace utils {
 
         bool plotPValues = true;
 		// replace lower bounds for KDvalues  with median, otherwise with 5th and 95th percentile 
-		bool putMedian = true;
-		/*0 = plot mean effect over all mutations away from wt 
-		 1 = plot effect of mutation that maximally affects Kd*/
-		bool summaryPlot = true;
-		
-		
-		int t7site = 18;
-		int firstXTick = t7site+1;
-		int xTickIncrement= 100;
+//		bool putMedian = true;
 
 		std::string refFile;
-		std::string barcodeFile;
         std::string dataDir;
 
 	};
 	
-    //TODO: auslagern + getter setter und änderfunktionen (zb. deactivate samples)
 	struct DataContainer {
 		
 		//reference sequence (1. pos, 2. A=1, C=2, G=3, T=4)
@@ -417,10 +408,6 @@ namespace utils {
 		// for each position collect all  singal2noise values per mutationsites(3) in 2 vectors
 		std::map<int, std::vector<std::vector<double>>> signal2noiseBound_perPos;
 		std::map<int, std::vector<std::vector<double>>> signal2noiseUnbound_perPos;
-		
-        //ToDo: kann das weg?
-//		std::map<int, std::vector<double>> signal2noiseBound_total;
-//		std::map<int, std::vector<double>> signal2noiseUnbound_total;
 		
         // relative raw KD values per position, for all experiments in one vector (for all 3 mutations)
         std::map<int, std::vector<std::vector<double>>> totalRawRelKD_perPos;

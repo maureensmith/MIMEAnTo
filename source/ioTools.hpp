@@ -7,6 +7,10 @@
 using namespace std;
 
 namespace ioTools {
+
+    std::string createDir(const string& resultDir);
+
+    void writeErrorLog(const string& resultDir, const std::string& text);
 	
     string readReference(const string& refStr, utils::refMap& ref);
 

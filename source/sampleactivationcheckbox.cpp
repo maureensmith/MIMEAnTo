@@ -1,4 +1,4 @@
-#include "sampleactivationcheckbox.h"
+#include "sampleactivationcheckbox.hpp"
 
 SampleActivationCheckBox::SampleActivationCheckBox(utils::DataContainer& data, QString name, QWidget *parent) :
     QCheckBox(name, parent)

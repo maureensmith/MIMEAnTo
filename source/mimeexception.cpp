@@ -1,4 +1,4 @@
-#include "mimeexception.h"
+#include "mimeexception.hpp"
 
 // using standard exceptions
 #include <iostream>
@@ -33,6 +33,12 @@ std::string MIME_PlotFailedException::message()
 std::string MIME_NoNameException::message()
 {
     std::string message = "No name given for sample set.";
+    return message;
+}
+
+std::string MIME_PathToExecutableNotFoundException::message()
+{
+    std::string message = "The path to the MIMEAnTo executable and with this the relative path to gnuplot could not be found.";
     return message;
 }
 

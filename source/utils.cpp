@@ -48,6 +48,7 @@ namespace utils {
 	double getPercentile(std::multiset<double>& s, int p) {
 		double res = std::numeric_limits<double>::quiet_NaN();
 		int size = s.size();
+
 		if(size > 0) {
 			int idx1 = round(size*p/100.f);
 			if(p == 50) {
@@ -57,11 +58,9 @@ namespace utils {
 			} else if(p == 100) {
 				res = *(std::next(s.begin(), size-1));
 			}else {
-				
 				int idx2 = idx1+1;
-				
-				std::multiset<double>::iterator it1 = std::next(s.begin(), idx1-1);
-				std::multiset<double>::iterator it2 = std::next(s.begin(), idx2-1);
+                std::multiset<double>::iterator it1 = std::next(s.begin(), std::max(idx1-1,0));
+                std::multiset<double>::iterator it2 = std::next(s.begin(), std::min(idx2-1, size-1));
 				
 				
 				double percentile1 = 100*((idx1-0.5)/(double)size);
@@ -73,19 +72,16 @@ namespace utils {
 				res = val1 + m*(p - percentile1);
 			}
 		}
-		
 		return res;
 	}
 	
 // 	template <typename T>
 	double getPercentile(std::vector<double>& values, int percentile) {
 		std::multiset<double> sortedValues;
-// 		std::vector<double> res(percentiles.size());
 		for(double entry : values) {
 			if(entry > 0) 
 				sortedValues.insert(entry);
 		}
-
 		double res = std::numeric_limits<double>::quiet_NaN();
 		if(sortedValues.size() > 0)
 			res = getPercentile(sortedValues, percentile);

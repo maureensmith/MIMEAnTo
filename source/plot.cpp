@@ -1,22 +1,85 @@
 #include "plot.hpp"
-#include <boost/filesystem.hpp>
 #include <fstream>
 #include <cstdlib>
-#include "boost/filesystem/fstream.hpp"
 #include "ioTools.hpp"
+#include "mimeexception.hpp"
 #include "gnuplot-iostream/gnuplot-iostream.h"
+
+//For finding the path to the executable on each platform
+#ifdef __APPLE__
+//For TARGET_OS_MAC
+#include "TargetConditionals.h"
+#include <mach-o/dyld.h>
+#elif defined _WIN32 || defined _WIN64 || defined WIN32 || defined WIN64
+#include "Windows.h"
+#elif defined __linux__
+#include <unistd.h>
+#endif
 
 namespace fs = boost::filesystem;
 
 namespace plot {
 
-    void createDirs(const std::string& resDir) {
-        fs::path resultDirPath(resDir+"/tmp");
-        if(!fs::is_directory(resultDirPath))
-            fs::create_directory(resultDirPath);
-        resultDirPath = resDir+"/plots";
-        if(!fs::is_directory(resultDirPath))
-            fs::create_directory(resultDirPath);
+
+
+    //Call gnuplot executable with gp file in Windows and OSX
+    void callGnuplot(fs::path& gpFile, const string& resDir)
+    {
+
+        fs::path gnuplotLogFile(resDir+"/tmp/gnuplotError.log");
+        std::string gnuplotExe = "";
+        //Workaround: last <\svg> not added if piped to exe. So: save as gp file and call exe with gp file
+#if defined _WIN32 || defined _WIN64 || defined WIN32 || defined WIN64
+        TCHAR execPath[MAX_PATH];
+
+        if(GetModuleFileName(NULL, execPath, MAX_PATH))
+        {
+            fs::path execFile(execPath);
+            gnuplotExe = "\"" + execFile.parent_path().string() + "\\gnuplot\\bin\\gnuplot.exe " + gpFile.string() + " 2>> " + gnuplotLogFile + "\"";
+        }
+        else
+            throw MIME_PathToExecutableNotFoundException();
+
+        //call gnuplot execubtable and save errors occuring during the call
+        //std::string gnuplotExe = "\".\\gnuplot\\bin\\gnuplot.exe " + gpFile.string() + " 2>> " + gnuplotLogFile + "\"";
+#elif defined __APPLE__
+    #ifdef TARGET_OS_MAC
+        //find path to executable to create relative path to gnuplot
+        char execPathBuf[PATH_MAX];
+        uint32_t size = PATH_MAX;
+        if(!_NSGetExecutablePath(execPathBuf, &size))
+        {
+            fs::path execFile(execPathBuf);
+            //Find path to executable and add the relative path to gnuplot, add the gp file to the command and pipe the error to the logFile
+            gnuplotExe = execFile.parent_path().string() +"/../PlugIns/Gnuplot.app/Contents/Resources/bin/gnuplot-run.sh "+ gpFile.string() + " 2>> " + gnuplotLogFile.string();
+            //gnuplotExe +=
+        } else
+            throw MIME_PathToExecutableNotFoundException();
+
+        //TODO: nur für debug zwecke
+//        std::string pwd = "pwd >> " + gnuplotLogFile.string();
+//        std::system(pwd.c_str());
+        //std::string gnuplotExe = "../PlugIns/Gnuplot.app/Contents/Resources/bin/gnuplot-run.sh " + gpFile.string() + " 2>> " + gnuplotLogFile;
+    #endif
+#elif defined __linux__
+        //test if gnuplot is installed, if not use executable
+        std::string gnuplotCall = "gnuplot -persist";
+       if(std::system(gnuplotCall.c_str() == 0)) {
+           char execPathBuf[PATH_MAX];
+           if (readlink("/proc/self/exe", execPathBuf, PATH_MAX) != -1)
+           {
+               fs::path execFile(execPathBuf);
+               gnuplotExe = execFile.parent_path().string() + "/gnuplot/bin/gnuplot " + gpFile.string() + " 2>> " + gnuplotLogFile.string();
+           }
+           else
+               throw MIME_PathToExecutableNotFoundException();
+       }
+#endif
+
+        //add the gp file to the command and pipe the error to the logFile
+        //gnuplotExe += gpFile.string() + " 2>> " + gnuplotLogFile.string();
+        if(gnuplotExe.size() > 0)
+            std::system(gnuplotExe.c_str());
     }
 
 
@@ -26,18 +89,24 @@ namespace plot {
 		//determine the mutation ratefor each sample for a first "sanity check"
 		fs::path *file;
 		Gnuplot *gp;
-        createDirs(resDir);
+        ioTools::createDir(resDir+"/tmp");
+        ioTools::createDir(resDir+"/plots");
 
-#ifdef _WIN32 || _WIN64
+//#ifdef _WIN32 || _WIN64
+//#ifndef __linux__
         fs::path gpFile(resDir+"/tmp/mutRateBoxPlot.gp");
         //std::string gnuplotCall = "\".\\gnuplot\\bin\\gnuplot.exe\"";
+        //call is saved in gp-file and called afterwards
         std::string gnuplotCall = ">"+gpFile.string();
-#else
+//#else
         //fs::path gpFile(resDir+"/tmp/mutRateBoxPlot.gp");
         //pipes commands to  gnuplot and creates at the same time the gp file
         //std::string gnuplotCall = "tee " + gpFile.string()+" | gnuplot -persist";
-        std::string gnuplotCall = "gnuplot -persist";
-#endif
+        //direct pipe to gnuplot
+        //TODO: testen ob gnuplot installiert
+        //if(std::system(gnuplotCall.c_str() == 0) ansonsten gnuplot binarys
+//        std::string gnuplotCall = "gnuplot -persist";
+//#endif
 
 
 
@@ -66,6 +135,9 @@ namespace plot {
             *gp << "set term pdfcairo enhanced color font 'Verdana, 8'\n";
             *gp << "set title 'Mutation frequency per sample'\n";
 		}
+
+        *gp << "set bmargin 5\n";
+        *gp << "set lmargin 10\n";
 
         *gp << "set output '" << file->string() << "'\n";
 		*gp << "set style fill solid 0.25 border -1\n";
@@ -209,12 +281,32 @@ namespace plot {
 		}
 
         delete gp;
-
-        //Workaround: last <\svg> not added if piped to exe. So: save as gp file and call exe with gp file
-#ifdef _WIN32 || _WIN64
-        std::string gnuplotExe = "\".\\gnuplot\\bin\\gnuplot.exe " + gpFile.string() + "\"";
-        std::system(gnuplotExe.c_str());
-#endif
+//#ifndef __linux__
+        callGnuplot(gpFile, resDir);
+//#endif
+//        //Workaround: last <\svg> not added if piped to exe. So: save as gp file and call exe with gp file
+//#ifdef _WIN32 || _WIN64
+//        std::string gnuplotExe = "\".\\gnuplot\\bin\\gnuplot.exe " + gpFile.string() + "\"";
+//        std::string = std::system(gnuplotExe.c_str());
+//#elif defined __APPLE__
+//    #include "TargetConditionals.h"
+//    #ifdef TARGET_OS_MAC
+//        try
+//        {
+//            std::string gnuplotExe = "./gnuplot/Gnuplot.app/Contents/Resources/bin/gnuplot " + gpFile.string();
+//            std::system("pwd");
+//            int status = std::system(gnuplotExe.c_str());
+//            std::cout << "Gnuplot Status " << status << std::endl;
+//            std::cout << "Terminated by signal: " << (WIFSIGNALED(status) ? "yes" : "no") << '\n';
+//            std::cout << "Exited normally: " << (WIFEXITED(status) ? "yes" : "no") << '\n';
+//            std::cout << "Child Process Stopped by signal: " << (WSTOPSIG(status) ? "yes" : "no") << '\n';
+//        }
+//        catch(...)
+//        {
+//            std::cout << "HA Exception gefangen!!!" << std::endl;
+//        }
+//    #endif
+//#endif
 
 
 
@@ -230,7 +322,8 @@ namespace plot {
     }
 
 
-    string plotCoeffVariation(const string& resDir, utils::Parameter& param, utils::DataContainer& data, bool svg, const string& filenamePrefix, bool eps) {
+    string plotCoeffVariation(const string& resDir, utils::Parameter& param, utils::DataContainer& data, bool svg, const string& filenamePrefix, bool eps)
+    {
         std::cout << "Plot coefficient of variation of median error rate per sample... " << std::endl;
         std::map<int, utils::rateArray> meanErrorsPerPosBound;
         std::map<int, double> varCoeffPerPosBound;
@@ -242,7 +335,8 @@ namespace plot {
         double maxCoeffBound = 0.0;
         double maxCoeffUnbound = 0.0;
 
-         createDirs(resDir);
+        ioTools::createDir(resDir+"/tmp");
+        ioTools::createDir(resDir+"/plots");
 
         //count activated samples
         int i = 0;
@@ -299,12 +393,13 @@ namespace plot {
 
         Gnuplot* gp;
         fs::path* file;
-#ifdef _WIN32 || _WIN64
-        fs::path gpFile(resDir+"/tmp/mutRateBoxPlot.gp");
+//#ifdef _WIN32 || _WIN64
+//#ifndef __linux__
+        fs::path gpFile(resDir+"/tmp/coefficientOfVariation.gp");
         std::string gnuplotCall = ">"+gpFile.string();
-#else
-        std::string gnuplotCall = "gnuplot -persist";
-#endif
+//#else
+//        std::string gnuplotCall = "gnuplot -persist";
+//#endif
 
 
         //Coefficient of variation: standard deviation/mean
@@ -347,25 +442,26 @@ namespace plot {
             *gp << "set title 'Coefficient of variation of mean error estimates'\n";
         }
 
+        *gp << "set bmargin 5\n";
+        *gp << "set lmargin 10\n";
+
         *gp << "set grid ytics linestyle 0\n";
         *gp << "set xrange [" << param.seqBegin-5 << ":" << param.seqEnd+5 << "]\n";
         *gp << "set xlabel 'Sequence position'\n";
         *gp << "set ylabel 'Coefficient of variation (%)'\n";
         *gp << "set key outside right vertical top Right\n";
 
-        *gp << "plot '-' with line title 'selected' lw 2 lt -1 lc -1, '-' with line title 'non-selected' lw 2 lt 0 lc -1\n";
+        *gp << "plot '-' with line title 'selected' lw 2 lt -1 lc 3, '-' with line title 'non-selected' lw 2 lt -1 lc 7\n";
         (*gp).send1d(varCoeffPerPosBound);
         (*gp).send1d(varCoeffPerPosUnbound);
         delete gp;
-
-        //Workaround: last <\svg> not added if piped to exe. So: save as gp file and call exe with gp file
-#ifdef _WIN32 || _WIN64
-        std::string gnuplotExe = "\".\\gnuplot\\bin\\gnuplot.exe " + gpFile.string() + "\"";
-        std::system(gnuplotExe.c_str());
-#endif
-
+//#ifndef __linux__
+        callGnuplot(gpFile, resDir);
+//#endif
         return (*file).string();
     }
+
+
     string plotCoefficientOfVariation(const string& resDir, utils::Parameter& param, utils::DataContainer& data, plot::PlotFormat plotformat, const string& filenamePrefix) {
 
         bool svg = plotformat == plot::SVG;
@@ -379,18 +475,18 @@ namespace plot {
     string plotError(const string& resDir, utils::Parameter& param, utils::DataContainer& data, bool svg, const string &filenamePrefix, bool eps) {
 		std::cout << "Plot median error rate per sample... " << std::endl;
 
-        /*Coefficient of variation: standard deviation/mean per position*/	
         int linewidth = 2;
-        createDirs(resDir);
+        ioTools::createDir(resDir+"/tmp");
+        ioTools::createDir(resDir+"/plots");
         Gnuplot* gp;
         fs::path* file;
 
-#ifdef _WIN32 || _WIN64
-        fs::path gpFile(resDir+"/tmp/mutRateBoxPlot.gp");
+//#ifndef __linux__
+        fs::path gpFile(resDir+"/tmp/errorEstimates.gp");
         std::string gnuplotCall = ">"+gpFile.string();
-#else
-        std::string gnuplotCall = "gnuplot -persist";
-#endif
+//#else
+//        std::string gnuplotCall = "gnuplot -persist";
+//#endif
 
         if(svg) {
             file = new fs::path(resDir+"/tmp/errorEstimates.svg");
@@ -548,7 +644,7 @@ namespace plot {
         *gp << "set format x\n";
         *gp << "set ylabel 'median error freq. non-selected (log_{10})'\n";
         *gp << "set tmargin 0\n";
-        *gp << "set bmargin 3\n";
+        *gp << "set bmargin 5\n";
         *gp << "set xlabel 'Sequence position'\n";
 
         i = 1;
@@ -623,13 +719,9 @@ namespace plot {
 
 
         delete gp;
-		
-        //Workaround: last <\svg> not added if piped to exe. So: save as gp file and call exe with gp file
-#ifdef _WIN32 || _WIN64
-        std::string gnuplotExe = "\".\\gnuplot\\bin\\gnuplot.exe " + gpFile.string() + "\"";
-        std::system(gnuplotExe.c_str());
-#endif
-
+//#ifndef __linux__
+        callGnuplot(gpFile, resDir);
+//#endif
         return (*file).string();
 	}
 
@@ -663,7 +755,8 @@ namespace plot {
 		
 		std::vector<boost::tuple<int, std::string, int>> refStr;
 		
-         createDirs(resDir);
+        ioTools::createDir(resDir+"/tmp");
+        ioTools::createDir(resDir+"/plots");
 		
 		/**** data for the max effect plot ***/
 		std::vector<std::pair<int,double>> a2g;
@@ -798,12 +891,13 @@ namespace plot {
 		Gnuplot* gp;
 		fs::path* file;
 
-#ifdef _WIN32 || _WIN64
-        fs::path gpFile(resDir+"/tmp/mutRateBoxPlot.gp");
+//#ifdef _WIN32 || _WIN64
+//#ifndef __linux__
+        fs::path gpFile(resDir+"/tmp/relKdwtMut.gp");
         std::string gnuplotCall = ">"+gpFile.string();
-#else
-        std::string gnuplotCall = "gnuplot -persist";
-#endif
+//#else
+//       std::string gnuplotCall = "gnuplot -persist";
+//#endif
 
         if(svg) {
             yRef = (yTo-yFrom)/4;
@@ -814,10 +908,8 @@ namespace plot {
 
             *gp << "set output '" << (*file).string() << "'\n";
             //set margins for multiplot: no gap between plot, enough space for axis labels
-			*gp << "set tmargin 5\n";
+            *gp << "set tmargin 5\n";
 			*gp << "set bmargin 0\n";
-            *gp << "set lmargin 10\n";
-            *gp << "set rmargin 10\n";
 			
             *gp << "set term svg enhanced font 'Helvetica,20' size " << std::max(std::round((end-begin+1)/8), 5.0)*300 << " 3.5*300\n";
 			
@@ -825,6 +917,7 @@ namespace plot {
 			*gp << "set multiplot layout 2,1\n";
 			*gp << "set format x ''\n";
 			*gp << "set format y\n";
+
 //			*gp << "set ylabel ' '\n";
 // 			*gp << "set label 1 'rel. binding affiniy mut/wt' at graph 1.0, graph 0.5 rotate by 90 center offset 1,0\n";
 			
@@ -846,6 +939,10 @@ namespace plot {
 			*gp << "set title 'Relative binding affinity wt -> mut'\n";
 
             *gp << "set xlabel 'Sequence position'\n";
+
+            //set margins for single plot: enough space for axis labels
+            *gp << "set tmargin 5\n";
+            *gp << "set bmargin 5\n";
 			
 		}
         else
@@ -867,7 +964,14 @@ namespace plot {
             *gp << "set title 'Relative binding affinity wt -> mut'\n";
 
             *gp << "set xlabel 'Sequence position'\n";
+
+            //set margins for single plot: enough space for axis labels
+            *gp << "set tmargin 5\n";
+            *gp << "set bmargin 5\n";
         }
+
+        *gp << "set lmargin 10\n";
+        *gp << "set rmargin 10\n";
 
         *gp << "set ylabel 'log_2(Kd_{mut}/Kd_{wt})\n";
         *gp << "set y2label 'log_2(Kd_{mut}/Kd_{wt})\n";
@@ -923,6 +1027,14 @@ namespace plot {
 		(*gp).send1d(negEffPValue[1]);
 		(*gp).send1d(negEffPValue[2]);
 		
+//#ifndef __linux__
+        if(!svg)
+        {
+            callGnuplot(gpFile, resDir);
+            gpFile = resDir+"/tmp/maxEffectOnKd.gp";
+            gnuplotCall = ">"+gpFile.string();
+        }
+//#endif
 		
 		/* max effect graph */
 
@@ -964,6 +1076,10 @@ namespace plot {
             *gp << "set label 'C' at graph 0.85, graph  0.95, 2 right tc palette\n";
             *gp << "set label 'G' at graph 0.9, graph  0.95, 3 right tc palette\n";
             *gp << "set label 'U' at graph 0.95, graph  0.95, 4 right tc palette\n";
+
+            //set margins for single plot: enough space for axis labels
+            *gp << "set tmargin 5\n";
+            *gp << "set bmargin 5\n";
 		}
         else {
             std::string fileName = "/maxEffectOnKd";
@@ -975,8 +1091,6 @@ namespace plot {
             gp = new Gnuplot(gnuplotCall);
 
             *gp << "set output '" << (*file).string() << "'\n";
-
-//			*gp << "set term postscript eps enhanced color size "<< std::max(std::round((end-begin+1)/8), 5.0) <<  ", 3.5\n";
             *gp << "set term pdfcairo enhanced color font 'Verdana, 8'\n";
             *gp << "set title 'Relative binding affinity wt -> mut_{max}'\n";
             *gp << "set grid ytics linestyle 0\n";
@@ -988,7 +1102,15 @@ namespace plot {
             *gp << "set label 'C' at graph 0.85, graph  0.95, 2 right tc palette\n";
             *gp << "set label 'G' at graph 0.9, graph  0.95, 3 right tc palette\n";
             *gp << "set label 'U' at graph 0.95, graph  0.95, 4 right tc palette\n";
+
+            //set margins for single plot: enough space for axis labels
+            *gp << "set tmargin 5\n";
+            *gp << "set bmargin 5\n";
         }
+        *gp << "set lmargin 10\n";
+        *gp << "set rmargin 10\n";
+
+
          if(param.plotPValues && !svg)
          {
             if(!eps)
@@ -1008,7 +1130,7 @@ namespace plot {
 		*gp << "'-' notitle w filledcu lc rgb 'grey70', ";
 		*gp << "'-' notitle w filledcu lc rgb 'grey70', ";
 		*gp << "'-' notitle w filledcu lc rgb 'grey90', ";
-        *gp << "'-' with lines lt 1 lc rgb 'black' lw 3 notitle, ";
+        *gp << "'-' with lines lt 1 lc rgb 'black' lw 2 notitle, ";
 
         if(param.plotPValues)
         {
@@ -1018,7 +1140,7 @@ namespace plot {
             else
                 *gp << "'-' with points pt 3 lc palette notitle, ";
         }
-        *gp << "'-' notitle w lines lt -1 lw 2 lc rgb 'black'\n";
+        *gp << "'-' notitle w lines lt -1 lw 1.5 lc rgb 'black'\n";
 		
 
 		(*gp).send1d(boost::make_tuple(actPositionsMax, perc95Max, perc75Max));
@@ -1035,13 +1157,9 @@ namespace plot {
 		}
 
         delete gp;
-
-        //Workaround: last <\svg> not added if piped to exe. So: save as gp file and call exe with gp file
-#ifdef _WIN32 || _WIN64
-        std::string gnuplotExe = "\".\\gnuplot\\bin\\gnuplot.exe " + gpFile.string() + "\"";
-        std::system(gnuplotExe.c_str());
-#endif
-
+//#ifndef __linux__
+        callGnuplot(gpFile, resDir);
+//#endif
         return (*file).string();
 	}
 

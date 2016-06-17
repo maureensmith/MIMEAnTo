@@ -1,11 +1,11 @@
-#include "messages.h"
+#include "messages.hpp"
 #include <QMessageBox>
 
 const QString Messages::ErrorVarCoeffText = "Coefficient of variation is exceeding the threshold";
 const QString Messages::ErrorVarCoeffInformativeText  = "The coefficient of variation of the error for the bound and/or unbound samples is exceeding  high. You are about to join the errors. Considering the errors respectively for each sample is recommended.\nPush OK if you still want to join the errors and proceed with your computation. Push Cancel if you want to change it.";
 const QString Messages::FilesAreSavedText = "Files are saved.";
 const QString Messages::FilesAreSavedWithFilenamesText = "Files are saved:\n";
-const QString Messages::PlotWentWrongText = "Something went wrong with plot.";
+const QString Messages::PlotWentWrongText = "Something went wrong with plot. The error is logged in the file tmp/gnuplotError.log";
 const QString Messages::RefFileMissingText = "Reference file or result directory are missing.";
 const QString Messages::InvalidIntervalText = "Invalid interval.";
 const QString Messages::CouldNotOpenFileText = "Couldn't open file";
@@ -20,6 +20,9 @@ const QString Messages::SomethingWrongWithSampleData = "Something is wrong with 
 const QString Messages::NotEnoughDataText = "Not enough data.";
 const QString Messages::SAMParsingNotYetProvidedText = "SAM parsing is not yet implemented.\nPlease use the provided python scripts to parse your data and give the data directory and the sample barcodes.";
 const QString Messages::ExitWarningText = "You are about to exit the program. All unsaved information will be lost.\nQuit anyway?";
+const QString Messages::BackButtonWarningText = "You are about to go one step back. All unsaved data computed here will be lost.\nGo back anyway?";
+const QString Messages::ErrorDuringQualityCriteriaText = "An error occured during the application of the quality criteria.";
+const QString Messages::ErrorDuringRawKdValuesText = "An error occured during the computation of the raw Kd values.";
 
 int Messages::askForDeletingPreviousResults()
 {
@@ -59,6 +62,18 @@ int Messages::exitApplicationWarning()
     return ret;
 }
 
+int Messages::backButtonWarning()
+{
+    int ret = QMessageBox::Ok;
+    QMessageBox msgBox;
+    msgBox.setText(Messages::BackButtonWarningText);
+    msgBox.setStandardButtons(QMessageBox::Cancel | QMessageBox::Ok);
+    msgBox.setDefaultButton(QMessageBox::Ok);
+    msgBox.setIcon(QMessageBox::Warning);
+    ret = msgBox.exec();
+    return ret;
+}
+
 void Messages::SAMparsingNotYetProvidedInformation()
 {
     QMessageBox msgBox;
@@ -84,93 +99,106 @@ void Messages::filesAreSavedMessage(const QString &files)
     msgBox.exec();
 }
 
-void Messages::plotWentWrongCritical()
+std::string Messages::plotWentWrongCritical()
 {
     QMessageBox msgBox;
     msgBox.setIcon(QMessageBox::Critical);
     msgBox.setText(Messages::PlotWentWrongText);
     msgBox.exec();
+    return Messages::PlotWentWrongText.toStdString();
 }
 
 
-void Messages::couldNotOpenFileCritical(const QString file)
+std::string Messages::couldNotOpenFileCritical(const QString file)
 {
     QMessageBox msgBox;
     msgBox.setIcon(QMessageBox::Critical);
     msgBox.setText(Messages::CouldNotOpenFileText+file);
     msgBox.exec();
+    return (Messages::CouldNotOpenFileText+file).toStdString();
 }
 
-void Messages::couldNotWriteFileCritical()
+std::string Messages::couldNotWriteFileCritical()
 {
     QMessageBox msgBox;
     msgBox.setIcon(QMessageBox::Critical);
     msgBox.setText(Messages::CouldNotWriteFileText);
     msgBox.exec();
+    return Messages::CouldNotWriteFileText.toStdString();
 }
 
-void Messages::refFileMissingCritical()
+std::string Messages::refFileMissingCritical()
 {
     QMessageBox msgBox;
     msgBox.setIcon(QMessageBox::Critical);
     msgBox.setText(Messages::RefFileMissingText);
     msgBox.exec();
+    return Messages::RefFileMissingText.toStdString();
 }
 
-void Messages::projectFileReadCritical()
+std::string Messages::projectFileReadCritical()
 {
     QMessageBox msgBox;
     msgBox.setIcon(QMessageBox::Critical);
     msgBox.setText(Messages::SomethingWrongWithProjectText);
     msgBox.exec();
+    return Messages::SomethingWrongWithProjectText.toStdString();
 }
 
-void Messages::invalidIntervalCritical()
+std::string Messages::invalidIntervalCritical()
 {
     QMessageBox msgBox;
     msgBox.setIcon(QMessageBox::Critical);
     msgBox.setText(Messages::InvalidIntervalText);
     msgBox.exec();
+    return Messages::InvalidIntervalText.toStdString();
 }
 
-void Messages::fileDoesNotExistCritical(const QString& file)
+std::string Messages::fileDoesNotExistCritical(const QString& file)
 {
     QMessageBox msgBox;
     msgBox.setIcon(QMessageBox::Critical);
     msgBox.setText(Messages::FileDoesNotExistText+file);
     msgBox.exec();
+    return (Messages::FileDoesNotExistText+file).toStdString();
 }
 
-void Messages::sampleDataDoesNotExistCritical(int row)
+std::string Messages::sampleDataDoesNotExistCritical(int row)
 {
+    QString text = "Sample data in row " +QString::number(row)+ " does not exist. Maybe forgot the data directory?";
     QMessageBox msgBox;
     msgBox.setIcon(QMessageBox::Critical);
-    msgBox.setText("Sample data in row " +QString::number(row)+ " does not exist. Maybe forgot the data directory?");
+    msgBox.setText(text);
     msgBox.exec();
+    return text.toStdString();
 }
 
-void Messages::sampleDataMissingCritical(int row)
+std::string Messages::sampleDataMissingCritical(int row)
 {
+    QString text = "Sample data in row " +QString::number(row)+ " is missing.";
     QMessageBox msgBox;
     msgBox.setIcon(QMessageBox::Critical);
-    msgBox.setText("Sample data in row " +QString::number(row)+ " is missing.");
+    msgBox.setText(text);
     msgBox.exec();
+    return text.toStdString();
 }
 
-void Messages::savingWentWrongCritical()
+std::string Messages::savingWentWrongCritical()
 {
     QMessageBox msgBox;
     msgBox.setIcon(QMessageBox::Critical);
     msgBox.setText(Messages::SavingWentWrongText);
     msgBox.exec();
+    return Messages::SavingWentWrongText.toStdString();
 }
 
-void Messages::readingWentWrongCritical()
+std::string Messages::readingWentWrongCritical()
 {
     QMessageBox msgBox;
     msgBox.setIcon(QMessageBox::Critical);
     msgBox.setText(Messages::ReadingWentWrongText);
     msgBox.exec();
+    return Messages::ReadingWentWrongText.toStdString();
 }
 
 void Messages::unknowException(const QString &msg)
@@ -181,20 +209,40 @@ void Messages::unknowException(const QString &msg)
     msgBox.exec();
 }
 
-void Messages::notEnoughDataCritical()
+std::string Messages::notEnoughDataCritical()
 {
     QMessageBox msgBox;
     msgBox.setIcon(QMessageBox::Critical);
     msgBox.setText(Messages::NotEnoughDataText);
     msgBox.exec();
+    return Messages::NotEnoughDataText.toStdString();
 }
 
-void Messages::sampleDataIsWrongCritical()
+std::string Messages::sampleDataIsWrongCritical()
 {
     QMessageBox msgBox;
     msgBox.setIcon(QMessageBox::Critical);
     msgBox.setText(Messages::SomethingWrongWithSampleData);
     msgBox.exec();
+    return Messages::SomethingWrongWithSampleData.toStdString();
+}
+
+std::string Messages::errorDuringQualityCriteriaApplication()
+{
+    QMessageBox msgBox;
+    msgBox.setIcon(QMessageBox::Critical);
+    msgBox.setText(Messages::ErrorDuringQualityCriteriaText);
+    msgBox.exec();
+    return Messages::ErrorDuringQualityCriteriaText.toStdString();
+}
+
+std::string Messages::ErrorDuringRawKdValuesCritical()
+{
+    QMessageBox msgBox;
+    msgBox.setIcon(QMessageBox::Critical);
+    msgBox.setText(Messages::ErrorDuringRawKdValuesText);
+    msgBox.exec();
+    return Messages::ErrorDuringRawKdValuesText.toStdString();
 }
 
 
