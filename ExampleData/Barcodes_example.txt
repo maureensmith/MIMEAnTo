@@ -1,5 +1,9 @@
 Barcode	SampleType	Library
 1	selected	wt
+2	selected	wt
 4	selected	mut
+5	selected	mut
 10	non-selected	wt
+11	non-selected	wt
 13	non-selected	mut
+14	non-selected	mut
