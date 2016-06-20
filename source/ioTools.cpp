@@ -390,7 +390,7 @@ namespace ioTools {
     }
     
     void readErrorEstimates(const string& resultDir, utils::DataContainer& data) {
-	    std::cout << "Read Error Estimates... " << std::endl;
+        std::cout << "Read Error Estimates... " << std::endl;
         std::string errorDir(resultDir+"/errors");
         readRatesPerPosition(data.medianExpKappaBound_perBase, "errorEstimatesPerBaseSelected.csv", errorDir);
         readRatesPerPosition(data.medianExpKappaUnbound_perBase, "errorEstimatesPerBaseNonselected.csv", errorDir);

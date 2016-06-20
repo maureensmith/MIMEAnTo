@@ -40,4 +40,13 @@ public:
      virtual ~MIME_PathToExecutableNotFoundException() = default;
 };
 
+
+class MIME_GnuplotNotFoundException : public std::exception
+{
+public:
+     std::string message();
+     virtual ~MIME_GnuplotNotFoundException() = default;
+};
+
+
 #endif // MIMEEXCEPTION_H

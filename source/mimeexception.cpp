@@ -42,6 +42,12 @@ std::string MIME_PathToExecutableNotFoundException::message()
     return message;
 }
 
+std::string MIME_GnuplotNotFoundException::message()
+{
+    std::string message = "Gnuplot is not installed or can not be found. Please install gnuplot or add the location to the environment variable PATH.";
+    return message;
+}
+
 
 
 

@@ -612,6 +612,22 @@ void MIMEMainWindow::on_loadDataPushButton_clicked()
                             ioTools::writeErrorLog(resultDir, errorMsg);
                         }
                     }
+                    catch(MIME_GnuplotNotFoundException& e)
+                    {
+                        QApplication::restoreOverrideCursor();
+                        Messages::unknowException(QString::fromStdString(e.message()));
+                        std::string resultDir = ui->resultDirLineEdit->text().toStdString();
+                        if(ioTools::dirExists(resultDir))
+                            ioTools::writeErrorLog(resultDir, "Load data: \n" + e.message());
+                    }
+                    catch(MIME_PathToExecutableNotFoundException& e)
+                    {
+                       QApplication::restoreOverrideCursor();
+                       Messages::unknowException(QString::fromStdString(e.message()));
+                       std::string resultDir = ui->resultDirLineEdit->text().toStdString();
+                       if(ioTools::dirExists(resultDir))
+                           ioTools::writeErrorLog(resultDir, "Load data: \n" + e.message());
+                    }
                     catch(MIME_NoSuchFileException& e)
                     {
                         QApplication::restoreOverrideCursor();
@@ -742,6 +758,14 @@ void MIMEMainWindow::on_loadProjectPushButton_clicked()
                 }
                 this->on_loadDataPushButton_clicked();
             }
+            catch(MIME_GnuplotNotFoundException& e)
+            {
+                QApplication::restoreOverrideCursor();
+                Messages::unknowException(QString::fromStdString(e.message()));
+                std::string resultDir = ui->resultDirLineEdit->text().toStdString();
+                if(ioTools::dirExists(resultDir))
+                    ioTools::writeErrorLog(resultDir, "Load project: \n" + e.message());
+            }
             catch(MIME_PathToExecutableNotFoundException& e)
             {
                QApplication::restoreOverrideCursor();
@@ -790,6 +814,22 @@ void MIMEMainWindow::on_saveSanityPushButton_clicked()
                 Messages::filesAreSavedMessage(QString::fromStdString(mutRateSamplePlotFile));
             }
         }
+    }
+    catch(MIME_GnuplotNotFoundException& e)
+    {
+        QApplication::restoreOverrideCursor();
+        Messages::unknowException(QString::fromStdString(e.message()));
+        std::string resultDir = ui->resultDirLineEdit->text().toStdString();
+        if(ioTools::dirExists(resultDir))
+            ioTools::writeErrorLog(resultDir, "Save bar plot: \n" + e.message());
+    }
+    catch(MIME_PathToExecutableNotFoundException& e)
+    {
+       QApplication::restoreOverrideCursor();
+       Messages::unknowException(QString::fromStdString(e.message()));
+       std::string resultDir = ui->resultDirLineEdit->text().toStdString();
+       if(ioTools::dirExists(resultDir))
+           ioTools::writeErrorLog(resultDir, "Save bar plot: \n" + e.message());
     }
     catch(std::exception& e)
     {
@@ -902,6 +942,22 @@ void MIMEMainWindow::on_estimateErrorPushButton_clicked()
             MIMEMainWindow::enableErrorSaveButtons(!errorCoeffVarPlotFile.empty() && !errorEstimationPlotFile.empty());
             ui->nextStepPushButton->setEnabled(!errorCoeffVarPlotFile.empty() && !errorEstimationPlotFile.empty());
         }
+        catch(MIME_GnuplotNotFoundException& e)
+        {
+            QApplication::restoreOverrideCursor();
+            Messages::unknowException(QString::fromStdString(e.message()));
+            std::string resultDir = ui->resultDirLineEdit->text().toStdString();
+            if(ioTools::dirExists(resultDir))
+                ioTools::writeErrorLog(resultDir, "Estimate error: \n" + e.message());
+        }
+        catch(MIME_PathToExecutableNotFoundException& e)
+        {
+           QApplication::restoreOverrideCursor();
+           Messages::unknowException(QString::fromStdString(e.message()));
+           std::string resultDir = ui->resultDirLineEdit->text().toStdString();
+           if(ioTools::dirExists(resultDir))
+               ioTools::writeErrorLog(resultDir, "Estimate error: \n" + e.message());
+        }
         catch(std::exception& e)
         {
             QApplication::restoreOverrideCursor();
@@ -956,6 +1012,22 @@ void MIMEMainWindow::on_saveErrorPlotPushButton_clicked()
                 Messages::filesAreSavedMessage(QString::fromStdString(errorRateSamplePlotFile)+"\n"+QString::fromStdString(errorCoeffVarPlotFile));
 
         }
+    }
+    catch(MIME_GnuplotNotFoundException& e)
+    {
+        QApplication::restoreOverrideCursor();
+        Messages::unknowException(QString::fromStdString(e.message()));
+        std::string resultDir = ui->resultDirLineEdit->text().toStdString();
+        if(ioTools::dirExists(resultDir))
+            ioTools::writeErrorLog(resultDir, "Save error plot: \n" + e.message());
+    }
+    catch(MIME_PathToExecutableNotFoundException& e)
+    {
+       QApplication::restoreOverrideCursor();
+       Messages::unknowException(QString::fromStdString(e.message()));
+       std::string resultDir = ui->resultDirLineEdit->text().toStdString();
+       if(ioTools::dirExists(resultDir))
+           ioTools::writeErrorLog(resultDir, "Save error plot: \n" + e.message());
     }
     catch(std::exception& e)
     {
@@ -1059,6 +1131,22 @@ void MIMEMainWindow::on_qualityCriteriaPushButton_clicked()
         {
             try {
                 allEffectsPlotFile = plot::plotAllEffects(ui->resultDirLineEdit->text().toStdString(), parameter, data, plot::SVG);
+            }
+            catch(MIME_GnuplotNotFoundException& e)
+            {
+                QApplication::restoreOverrideCursor();
+                Messages::unknowException(QString::fromStdString(e.message()));
+                std::string resultDir = ui->resultDirLineEdit->text().toStdString();
+                if(ioTools::dirExists(resultDir))
+                    ioTools::writeErrorLog(resultDir, "Apply quality criteria: \n" + e.message());
+            }
+            catch(MIME_PathToExecutableNotFoundException& e)
+            {
+               QApplication::restoreOverrideCursor();
+               Messages::unknowException(QString::fromStdString(e.message()));
+               std::string resultDir = ui->resultDirLineEdit->text().toStdString();
+               if(ioTools::dirExists(resultDir))
+                   ioTools::writeErrorLog(resultDir, "Apply quality criteria: \n" + e.message());
             }
             catch(std::exception& e)
             {
@@ -1182,6 +1270,22 @@ void MIMEMainWindow::on_saveKDImagewithCriteriaPushButton_clicked()
                     plot::plotAllEffects(ui->resultDirLineEdit->text().toStdString(), parameter, data, plot::EPS, text.toStdString());
                 if(ui->pdfKdCheckBox->isChecked())
                     plot::plotAllEffects(ui->resultDirLineEdit->text().toStdString(), parameter, data, plot::PDF, text.toStdString());
+            }
+            catch(MIME_GnuplotNotFoundException& e)
+            {
+                QApplication::restoreOverrideCursor();
+                Messages::unknowException(QString::fromStdString(e.message()));
+                std::string resultDir = ui->resultDirLineEdit->text().toStdString();
+                if(ioTools::dirExists(resultDir))
+                    ioTools::writeErrorLog(resultDir, "Save Kd plot: \n" + e.message());
+            }
+            catch(MIME_PathToExecutableNotFoundException& e)
+            {
+               QApplication::restoreOverrideCursor();
+               Messages::unknowException(QString::fromStdString(e.message()));
+               std::string resultDir = ui->resultDirLineEdit->text().toStdString();
+               if(ioTools::dirExists(resultDir))
+                   ioTools::writeErrorLog(resultDir, "Save Kd plot: \n" + e.message());
             }
             catch(std::exception& e)
             {

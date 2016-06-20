@@ -11,7 +11,7 @@
 #include "TargetConditionals.h"
 #include <mach-o/dyld.h>
 #elif defined _WIN32 || defined _WIN64 || defined WIN32 || defined WIN64
-#include "Windows.h"
+#include "windows.h"
 #elif defined __linux__
 #include <unistd.h>
 #endif
@@ -35,7 +35,7 @@ namespace plot {
         if(GetModuleFileName(NULL, execPath, MAX_PATH))
         {
             fs::path execFile(execPath);
-            gnuplotExe = "\"" + execFile.parent_path().string() + "\\gnuplot\\bin\\gnuplot.exe " + gpFile.string() + " 2>> " + gnuplotLogFile + "\"";
+            gnuplotExe = "\"" + execFile.parent_path().string() + "\\gnuplot\\bin\\gnuplot.exe " + gpFile.string() + " 2>> " + gnuplotLogFile.string() + "\"";
         }
         else
             throw MIME_PathToExecutableNotFoundException();
@@ -62,17 +62,23 @@ namespace plot {
         //std::string gnuplotExe = "../PlugIns/Gnuplot.app/Contents/Resources/bin/gnuplot-run.sh " + gpFile.string() + " 2>> " + gnuplotLogFile;
     #endif
 #elif defined __linux__
-        //test if gnuplot is installed, if not use executable
-        std::string gnuplotCall = "gnuplot -persist";
-       if(std::system(gnuplotCall.c_str() == 0)) {
-           char execPathBuf[PATH_MAX];
-           if (readlink("/proc/self/exe", execPathBuf, PATH_MAX) != -1)
-           {
-               fs::path execFile(execPathBuf);
-               gnuplotExe = execFile.parent_path().string() + "/gnuplot/bin/gnuplot " + gpFile.string() + " 2>> " + gnuplotLogFile.string();
-           }
-           else
-               throw MIME_PathToExecutableNotFoundException();
+        //test if gnuplot is installed (by aksing for the help), if not use executable
+        std::string gnuplotCall = "gnuplot -h >/dev/null";
+       if(std::system(gnuplotCall.c_str()) != 0)
+       {
+//           char execPathBuf[PATH_MAX];
+//           if (readlink("/proc/self/exe", execPathBuf, PATH_MAX) != -1)
+//           {
+//               std::cout << "Path zu Exec " << execPathBuf << std::endl;
+//               fs::path execFile(execPathBuf);
+//               gnuplotExe = execFile.parent_path().string() + "/gnuplot/bin/gnuplot " + gpFile.string() + " 2>> " + gnuplotLogFile.string();
+//           }
+//           else
+           //Gnuplot is not installed -> Exception (it needs to be installed on linux)
+             throw MIME_GnuplotNotFoundException();
+       } else
+       {
+           gnuplotExe = "gnuplot " + gpFile.string() + " 2>> " + gnuplotLogFile.string();
        }
 #endif
 

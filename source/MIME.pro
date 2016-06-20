@@ -59,6 +59,7 @@ use_staticlibs {
 
 # boost libs for cross compiling for windows
 use_winlibs {
+    #QMAKE_CXXFLAGS += -I ~/Programmierung/mxe/usr/i686-w64-mingw32.static/include/
     LIBS += ~/Programmierung/mxe/usr/i686-w64-mingw32.static/lib/libboost_system-mt.a
     LIBS += ~/Programmierung/mxe/usr/i686-w64-mingw32.static/lib/libboost_filesystem-mt.a
     LIBS += ~/Programmierung/mxe/usr/i686-w64-mingw32.static/lib/libboost_iostreams-mt.a
