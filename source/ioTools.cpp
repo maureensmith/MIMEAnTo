@@ -443,38 +443,38 @@ namespace ioTools {
 
     void writeSignal2Noise(const string& resultDir, utils::DataContainer& data) {
         std::cout << "Write signal to noise ratio... " << std::endl;
-        printMapOfVectorOfVector(data.signal2noiseBound_perPos, "Signal2NoiseRatioSelected.csv", resultDir);
-        printMapOfVectorOfVector(data.signal2noiseUnbound_perPos, "Signal2NoiseRatioNonselected.csv", resultDir);
+        printMapOfVectorOfVector(data.signal2noiseBound_perPos, "signal2NoiseRatioSelected.csv", resultDir);
+        printMapOfVectorOfVector(data.signal2noiseUnbound_perPos, "signal2NoiseRatioNonselected.csv", resultDir);
     }
 
     void readSignal2Noise(const string& resultDir, utils::DataContainer& data) {
         std::cout << "Read signal to noise ratio... " << std::endl;
-        readVectorOfVectorPerPosition(data.signal2noiseBound_perPos, "Signal2NoiseRatioSelected.csv", resultDir);
-        readVectorOfVectorPerPosition(data.signal2noiseUnbound_perPos, "Signal2NoiseRatioNonselected.csv", resultDir);
+        readVectorOfVectorPerPosition(data.signal2noiseBound_perPos, "signal2NoiseRatioSelected.csv", resultDir);
+        readVectorOfVectorPerPosition(data.signal2noiseUnbound_perPos, "signal2NoiseRatioNonselected.csv", resultDir);
     }
 
     void writePositionWeights(const string& resultDir, utils::DataContainer& data) {
-        std::cout << "Write position weights... " << std::endl;
-        printMapOfVector(data.positionWeightsBound, "PositionWeightsSelected.csv", resultDir);
-        printMapOfVector(data.positionWeightsUnbound, "PositionWeightsNonselected.csv", resultDir);
+        std::cout << "Write percentage of maximal coverage... " << std::endl;
+        printMapOfVector(data.positionWeightsBound, "percentOfMaxCovSelected.csv", resultDir);
+        printMapOfVector(data.positionWeightsUnbound, "percentOfMaxCovNonselected.csv", resultDir);
     }
 
     void readPositionWeights(const string& resultDir, utils::DataContainer& data) {
-        std::cout << "Read position weights... " << std::endl;
-        readRatesPerPosition(data.positionWeightsBound, "PositionWeightsSelected.csv", resultDir);
-        readRatesPerPosition(data.positionWeightsUnbound, "PositionWeightsNonselected.csv", resultDir);
+        std::cout << "Read percentage of maximal coverage... " << std::endl;
+        readRatesPerPosition(data.positionWeightsBound, "percentOfMaxCovSelected.csv", resultDir);
+        readRatesPerPosition(data.positionWeightsUnbound, "percentOfMaxCovNonselected.csv", resultDir);
     }
 
     void writeSequenceNumbers(const string& resultDir, utils::DataContainer& data) {
-        std::cout << "Write number of sequences... " << std::endl;
-        printMapOfVector(data.numSeqPerPosPairBound, "numSeqPerPosPairSelected.csv", resultDir);
-        printMapOfVector(data.numSeqPerPosPairUnbound, "numSeqPerPosPairNonselected.csv", resultDir);
+        std::cout << "Write coverage... " << std::endl;
+        printMapOfVector(data.numSeqPerPosPairBound, "coverageSelected.csv", resultDir);
+        printMapOfVector(data.numSeqPerPosPairUnbound, "coverageNonselected.csv", resultDir);
     }
 
     void readSequenceNumbers(const string& resultDir, utils::DataContainer& data) {
-        std::cout << "Read number of sequences... " << std::endl;
-        readRatesPerPosition(data.numSeqPerPosPairBound, "numSeqPerPosPairSelected.csv", resultDir);
-        readRatesPerPosition(data.numSeqPerPosPairUnbound, "numSeqPerPosPairNonselected.csv", resultDir);
+        std::cout << "Read coverage... " << std::endl;
+        readRatesPerPosition(data.numSeqPerPosPairBound, "coverageSelected.csv", resultDir);
+        readRatesPerPosition(data.numSeqPerPosPairUnbound, "coverageNonselected.csv", resultDir);
     }
 
     void writeRawKDCriteria(const string& resDir, utils::DataContainer& data, const string& filename) {
@@ -501,7 +501,7 @@ namespace ioTools {
         std::string filename = "PositionWiseKdEstimates";
         if(!filenamePrefix.empty())
             filename += "_";
-        fs::path resultDir(resDir+"/KdResults");
+        fs::path resultDir(resDir);
         if(!fs::is_directory(resultDir))
             fs::create_directory(resultDir);
         fs::path KDFile(resultDir.string()+"/"+filename+filenamePrefix+".csv");
@@ -551,7 +551,7 @@ namespace ioTools {
         std::string filename = "PositionWiseMaxKd";
         if(!filenamePrefix.empty())
             filename += "_";
-        fs::path resultDir(resDir+"/KdResults");
+        fs::path resultDir(resDir);
         if(!fs::is_directory(resultDir))
             fs::create_directory(resultDir);
         fs::path KDFile(resultDir.string()+"/"+filename+filenamePrefix+".csv");

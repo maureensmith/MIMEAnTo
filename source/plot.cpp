@@ -22,13 +22,13 @@ namespace plot {
 
 
 
-    //Call gnuplot executable with gp file in Windows and OSX
+    //Call gnuplot executable with gp file in Linux, Windows and OSX
     void callGnuplot(fs::path& gpFile, const string& resDir)
     {
 
         fs::path gnuplotLogFile(resDir+"/tmp/gnuplotError.log");
         std::string gnuplotExe = "";
-        //Workaround: last <\svg> not added if piped to exe. So: save as gp file and call exe with gp file
+        // last <\svg> not added if piped to exe. So: save as gp file and call exe with gp file
 #if defined _WIN32 || defined _WIN64 || defined WIN32 || defined WIN64
         TCHAR execPath[MAX_PATH];
 
@@ -39,9 +39,6 @@ namespace plot {
         }
         else
             throw MIME_PathToExecutableNotFoundException();
-
-        //call gnuplot execubtable and save errors occuring during the call
-        //std::string gnuplotExe = "\".\\gnuplot\\bin\\gnuplot.exe " + gpFile.string() + " 2>> " + gnuplotLogFile + "\"";
 #elif defined __APPLE__
     #ifdef TARGET_OS_MAC
         //find path to executable to create relative path to gnuplot
@@ -52,14 +49,8 @@ namespace plot {
             fs::path execFile(execPathBuf);
             //Find path to executable and add the relative path to gnuplot, add the gp file to the command and pipe the error to the logFile
             gnuplotExe = execFile.parent_path().string() +"/../PlugIns/Gnuplot.app/Contents/Resources/bin/gnuplot-run.sh "+ gpFile.string() + " 2>> " + gnuplotLogFile.string();
-            //gnuplotExe +=
         } else
             throw MIME_PathToExecutableNotFoundException();
-
-        //TODO: nur für debug zwecke
-//        std::string pwd = "pwd >> " + gnuplotLogFile.string();
-//        std::system(pwd.c_str());
-        //std::string gnuplotExe = "../PlugIns/Gnuplot.app/Contents/Resources/bin/gnuplot-run.sh " + gpFile.string() + " 2>> " + gnuplotLogFile;
     #endif
 #elif defined __linux__
         //test if gnuplot is installed (by aksing for the help), if not use executable
@@ -69,7 +60,6 @@ namespace plot {
 //           char execPathBuf[PATH_MAX];
 //           if (readlink("/proc/self/exe", execPathBuf, PATH_MAX) != -1)
 //           {
-//               std::cout << "Path zu Exec " << execPathBuf << std::endl;
 //               fs::path execFile(execPathBuf);
 //               gnuplotExe = execFile.parent_path().string() + "/gnuplot/bin/gnuplot " + gpFile.string() + " 2>> " + gnuplotLogFile.string();
 //           }
@@ -82,8 +72,7 @@ namespace plot {
        }
 #endif
 
-        //add the gp file to the command and pipe the error to the logFile
-        //gnuplotExe += gpFile.string() + " 2>> " + gnuplotLogFile.string();
+       //call gnuplot
         if(gnuplotExe.size() > 0)
             std::system(gnuplotExe.c_str());
     }
@@ -98,23 +87,9 @@ namespace plot {
         ioTools::createDir(resDir+"/tmp");
         ioTools::createDir(resDir+"/plots");
 
-//#ifdef _WIN32 || _WIN64
-//#ifndef __linux__
         fs::path gpFile(resDir+"/tmp/mutRateBoxPlot.gp");
-        //std::string gnuplotCall = "\".\\gnuplot\\bin\\gnuplot.exe\"";
         //call is saved in gp-file and called afterwards
         std::string gnuplotCall = ">"+gpFile.string();
-//#else
-        //fs::path gpFile(resDir+"/tmp/mutRateBoxPlot.gp");
-        //pipes commands to  gnuplot and creates at the same time the gp file
-        //std::string gnuplotCall = "tee " + gpFile.string()+" | gnuplot -persist";
-        //direct pipe to gnuplot
-        //TODO: testen ob gnuplot installiert
-        //if(std::system(gnuplotCall.c_str() == 0) ansonsten gnuplot binarys
-//        std::string gnuplotCall = "gnuplot -persist";
-//#endif
-
-
 
 		if(svg) 
 		{
@@ -158,11 +133,8 @@ namespace plot {
 		*gp << "set key top right\n";
 		*gp << "set xlabel 'Sample'\n";
         *gp << "set ylabel 'Mismatch frequency (log_{10})'\n";
-// 		gp << "set logscale y\n";
 		utils::sampleContainer::iterator boundIt, unboundIt, dnaIt;
-		//all plots in for loop in one plot
-// 		gp << "set multiplot\n";
-		
+
         //workaround: print the first sample as key
 
 		bool wt = false;
@@ -191,7 +163,6 @@ namespace plot {
             {
                 *gp << "plot ";
                 first = false;
-//
            } else
                 *gp << ", ";
             *gp << "'-' using ("<<barcode <<"):1 " << title <<" lc rgb '"<< color << "'";
@@ -287,36 +258,7 @@ namespace plot {
 		}
 
         delete gp;
-//#ifndef __linux__
         callGnuplot(gpFile, resDir);
-//#endif
-//        //Workaround: last <\svg> not added if piped to exe. So: save as gp file and call exe with gp file
-//#ifdef _WIN32 || _WIN64
-//        std::string gnuplotExe = "\".\\gnuplot\\bin\\gnuplot.exe " + gpFile.string() + "\"";
-//        std::string = std::system(gnuplotExe.c_str());
-//#elif defined __APPLE__
-//    #include "TargetConditionals.h"
-//    #ifdef TARGET_OS_MAC
-//        try
-//        {
-//            std::string gnuplotExe = "./gnuplot/Gnuplot.app/Contents/Resources/bin/gnuplot " + gpFile.string();
-//            std::system("pwd");
-//            int status = std::system(gnuplotExe.c_str());
-//            std::cout << "Gnuplot Status " << status << std::endl;
-//            std::cout << "Terminated by signal: " << (WIFSIGNALED(status) ? "yes" : "no") << '\n';
-//            std::cout << "Exited normally: " << (WIFEXITED(status) ? "yes" : "no") << '\n';
-//            std::cout << "Child Process Stopped by signal: " << (WSTOPSIG(status) ? "yes" : "no") << '\n';
-//        }
-//        catch(...)
-//        {
-//            std::cout << "HA Exception gefangen!!!" << std::endl;
-//        }
-//    #endif
-//#endif
-
-
-
-
         return file->string();
 	}
 
@@ -386,37 +328,22 @@ namespace plot {
                             maxCoeffBound = varCoeffPerPosBound[pos];
                         if(varCoeffPerPosUnbound[pos] > maxCoeffUnbound)
                             maxCoeffUnbound = varCoeffPerPosUnbound[pos];
-
                     }
-
                 }
                 ++j;
-
             }
         }
 
-
-
         Gnuplot* gp;
         fs::path* file;
-//#ifdef _WIN32 || _WIN64
-//#ifndef __linux__
         fs::path gpFile(resDir+"/tmp/coefficientOfVariation.gp");
         std::string gnuplotCall = ">"+gpFile.string();
-//#else
-//        std::string gnuplotCall = "gnuplot -persist";
-//#endif
-
 
         //Coefficient of variation: standard deviation/mean
         if(svg)
         {
             file = new fs::path(resDir+"/tmp/coefficientOfVariation.svg");
-            //fs::path gpFile(resDir+"/tmp/coefficientOfVariation.gp");
-
-            //gp = new Gnuplot("tee "+ gpFile.string()+" | gnuplot -persist");
             gp = new Gnuplot(gnuplotCall);
-
 
             *gp << "set output '" << (*file).string() << "'\n";
             *gp << "set term svg enhanced\n";
@@ -427,8 +354,6 @@ namespace plot {
             if(!filenamePrefix.empty())
                 fileName += "_";
             file = new fs::path(resDir+"/plots"+fileName+filenamePrefix+".eps");
-            //fs::path gpFile(resDir+"/tmp/coefficientOfVariation.gp");
-            //gp = new Gnuplot("tee " + gpFile.string()+" | gnuplot -persist");
             gp = new Gnuplot(gnuplotCall);
             *gp << "set output '" << (*file).string() << "'\n";
             *gp << "set term postscript eps enhanced color\n";
@@ -440,8 +365,6 @@ namespace plot {
             if(!filenamePrefix.empty())
                 fileName += "_";
             file = new fs::path(resDir+"/plots"+fileName+filenamePrefix+".pdf");
-            //fs::path gpFile(resDir+"/tmp/coefficientOfVariation.gp");
-            //gp = new Gnuplot("tee " + gpFile.string()+" | gnuplot -persist");
             gp = new Gnuplot(gnuplotCall);
             *gp << "set output '" << (*file).string() << "'\n";
             *gp << "set term pdfcairo enhanced color font 'Verdana, 8'\n";
@@ -457,13 +380,12 @@ namespace plot {
         *gp << "set ylabel 'Coefficient of variation (%)'\n";
         *gp << "set key outside right vertical top Right\n";
 
-        *gp << "plot '-' with line title 'selected' lw 2 lt -1 lc 3, '-' with line title 'non-selected' lw 2 lt -1 lc 7\n";
+        *gp << "plot '-' with line title 'selected' lw 2 lt -1 lc rgb '#56b4e9', '-' with line title 'non-selected' lw 2 lt -1 lc rgb '#e51e10'\n";
         (*gp).send1d(varCoeffPerPosBound);
         (*gp).send1d(varCoeffPerPosUnbound);
+
         delete gp;
-//#ifndef __linux__
         callGnuplot(gpFile, resDir);
-//#endif
         return (*file).string();
     }
 
@@ -487,27 +409,15 @@ namespace plot {
         Gnuplot* gp;
         fs::path* file;
 
-//#ifndef __linux__
         fs::path gpFile(resDir+"/tmp/errorEstimates.gp");
         std::string gnuplotCall = ">"+gpFile.string();
-//#else
-//        std::string gnuplotCall = "gnuplot -persist";
-//#endif
-
         if(svg) {
             file = new fs::path(resDir+"/tmp/errorEstimates.svg");
-            //fs::path gpFile(resDir+"/tmp/errorEstimates.gp");
-            //gp = new Gnuplot("tee "+ gpFile.string()+" | gnuplot -persist");
             gp = new Gnuplot(gnuplotCall);
 
             *gp << "set output '" << (*file).string() << "'\n";
-
-
             *gp << "set term svg enhanced\n";
             *gp << "set multiplot layout 2,1\n";
-
-
-
         } else if(eps) {
             linewidth = 4;
             std::string fileName = "/errorEstimates";
@@ -515,13 +425,9 @@ namespace plot {
             if(!filenamePrefix.empty())
                 fileName += "_";
             file = new fs::path(resDir+"/plots"+fileName+filenamePrefix+".eps");
-
-            //fs::path gpFile(resDir+"/tmp/errorEstimates.gp");
-            //gp = new Gnuplot("tee "+ gpFile.string()+" | gnuplot -persist");
             gp = new Gnuplot(gnuplotCall);
 
             *gp << "set output '" << (*file).string() << "'\n";
-
             //pdf instead of eps, because transparency doesn't work
             *gp << "set term postscript eps enhanced color\n";
             //*gp << "set term pdfcairo enhanced color font 'Verdana, 8'\n";
@@ -536,19 +442,24 @@ namespace plot {
             if(!filenamePrefix.empty())
                 fileName += "_";
             file = new fs::path(resDir+"/plots"+fileName+filenamePrefix+".pdf");
-
-            //fs::path gpFile(resDir+"/tmp/errorEstimates.gp");
-            //gp = new Gnuplot("tee "+ gpFile.string()+" | gnuplot -persist");
             gp = new Gnuplot(gnuplotCall);
 
             *gp << "set output '" << (*file).string() << "'\n";
-
-            //pdf instead of eps, because transparency doesn't work
-//            *gp << "set term postscript eps enhanced color\n";
             *gp << "set term pdfcairo enhanced color font 'Verdana, 8'\n";
             *gp << "set multiplot layout 2,1 title 'Error estimates per sample'\n";
 
         }
+
+        //set colors (because they are different for gnuplotversion 4.6 and 5.0
+        *gp << "set linetype  1 lc rgb 'dark-violet' lw 1\n";
+        *gp << "set linetype  2 lc rgb '#009e73' lw 1\n";
+        *gp << "set linetype  3 lc rgb '#56b4e9' lw 1\n";
+        *gp << "set linetype  4 lc rgb '#e69f00' lw 1\n";
+        *gp << "set linetype  5 lc rgb '#f0e442' lw 1\n";
+        *gp << "set linetype  6 lc rgb '#0072b2' lw 1\n";
+        *gp << "set linetype  7 lc rgb '#e51e10' lw 1\n";
+        *gp << "set linetype  8 lc rgb 'black' lw 1\n";
+        *gp << "set linetype  9 lc rgb 'gray50' lw 1\n";
 
          /****** bound errors******/
 
@@ -556,15 +467,15 @@ namespace plot {
         *gp << "set tmargin 1\n";
 //             *gp << "set bmargin 0\n";
         *gp << "set lmargin 10\n";
-        *gp << "set rmargin 25\n";
+        *gp << "set rmargin 20\n";
         *gp << "set style fill transparent solid 0.25 noborder\n";
         *gp << "set format x ''\n";
         *gp << "set xrange [" << param.seqBegin-5 << ":" << param.seqEnd+5 << "]\n";
         *gp << "set format y\n";
 
-        *gp << "set ylabel 'median error freq. selected (log_{10})'\n";
+        *gp << "set ylabel 'median error freq.(log_{10})'\n";
         *gp << "set grid ytics linestyle 0\n";
-        *gp << "set key outside right vertical top Right\n";
+        *gp << "set key outside right vertical top Right title 'selected'\n";
         //first the percentiles so they are in the background
         int i = 1;
         for(auto sampleBoundIt = data.bound.begin(); sampleBoundIt != data.bound.end(); ++sampleBoundIt)
@@ -596,20 +507,16 @@ namespace plot {
             {
                 std::string name = sampleBoundIt->name;
                 //median error as line
-                *gp << ",'-' using 1:2 with line title 'selected " << name <<"' lw "<< linewidth << " lt -1 lc "<< i;
+                *gp << ",'-' using 1:2 with line title '" << name <<"' lw "<< linewidth << " lt -1 lc "<< i;
                 ++i;
             }
         }
 
         *gp << "\n";
 
-        //sample index
-//        int j = 0;
         //first put the percentile data
         for(auto sampleBoundIt = data.bound.begin(); sampleBoundIt != data.bound.end(); ++sampleBoundIt)
         {
-
-
             if(sampleBoundIt->library == 0 && sampleBoundIt->active)
             {
                 int boundBarcode = sampleBoundIt->barcode;
@@ -648,10 +555,11 @@ namespace plot {
         /****** unbound errors******/
 
         *gp << "set format x\n";
-        *gp << "set ylabel 'median error freq. non-selected (log_{10})'\n";
+        *gp << "set ylabel 'median error freq.(log_{10})'\n";
         *gp << "set tmargin 0\n";
         *gp << "set bmargin 5\n";
         *gp << "set xlabel 'Sequence position'\n";
+        *gp << "set key title 'non-selected'\n";
 
         i = 1;
         for(auto sampleUnboundIt = data.unbound.begin(); sampleUnboundIt != data.unbound.end(); ++sampleUnboundIt)
@@ -682,7 +590,7 @@ namespace plot {
                 std::string name = sampleUnboundIt->name;
 
                 //median error as line
-                *gp << ", '-' using 1:2 with line title 'non-selected " << name <<"' lw "<< linewidth << " lt 0 lc "<< i;
+                *gp << ", '-' using 1:2 with line title '" << name <<"' lw "<< linewidth << " lt 0 lc "<< i;
                 ++i;
             }
         }
@@ -700,7 +608,6 @@ namespace plot {
                     int pos = posItUnbound->first;
                     logPercAreaUnbound[pos] = std::make_pair(log10(data.perc75ExpKappaTotal_perSampleUnbound[unboundBarcode][pos]), log10(data.perc25ExpKappaTotal_perSampleUnbound[unboundBarcode][pos]));
                 }
-
                 (*gp).send1d(logPercAreaUnbound);
             }
         }
@@ -723,11 +630,8 @@ namespace plot {
 
         *gp << "unset multiplot\n";
 
-
         delete gp;
-//#ifndef __linux__
         callGnuplot(gpFile, resDir);
-//#endif
         return (*file).string();
 	}
 
@@ -796,40 +700,58 @@ namespace plot {
         }
 		
         std::vector<std::pair<double, int>> nullLine{std::make_pair(begin-0.5, 0), std::make_pair(end+0.5, 0)};
-        for(int pos: data.positions) {
-// 			if(pos >= begin && pos <= end) {
-				/*** max effect computation ***/
-				int maxmut = data.maxMut[pos];
-				int maxmutIdx = maxmut-1;
-				if(!std::isnan(maxmut) && maxmut > 0) {
-					
-					if(maxmut > data.ref[pos])
-						--maxmutIdx;
-						//determine number/index of mutation with maximum effect
-						double p95 = log2(utils::getPercentile(data.totalRelKD_perPos[pos][maxmutIdx], 95));
-						double p5 = log2(utils::getPercentile(data.totalRelKD_perPos[pos][maxmutIdx], 5));
-						mediansMax.push_back(log2(data.KDmedians[pos][maxmutIdx]));
-						perc95Max.push_back(p95);
-						perc5Max.push_back(p5);
-						perc75Max.push_back(log2(utils::getPercentile(data.totalRelKD_perPos[pos][maxmutIdx], 75)));
-						perc25Max.push_back(log2(utils::getPercentile(data.totalRelKD_perPos[pos][maxmutIdx], 25)));
-						actPositionsMax.push_back(pos);
-						
-	// 				}
-					if(data.ref[pos] == 1 && maxmut == 3)
-						a2g.push_back(std::make_pair(pos, log2(data.KDmedians[pos][maxmutIdx])));
-					
-					if(pos >= begin && pos <= end) {
-						if(p95 > maxYMaxEff)
-							maxYMaxEff = std::ceil(p95);
-						if(p5 < minYMaxEff)
-							minYMaxEff = std::floor(p5);
-					}
-				}
-			
+        //for(int pos: data.positions) {
 
-//				int refColor = data.ref[pos];
-//				refStr.push_back(boost::make_tuple(pos,ACGT[data.ref[pos]-1], refColor));
+        for(int pos = begin; pos <=end; ++pos){
+// 			if(pos >= begin && pos <= end) {
+            std::map<int,int>::iterator maxIt = data.maxMut.find(pos);
+            int maxmut = -1;
+            int maxmutIdx = -1;
+            if(maxIt != data.maxMut.end() && !std::isnan(maxIt->second) && (maxIt->second) > 0)
+            {
+				/*** max effect computation ***/
+                //int maxmut = data.maxMut[pos];
+                maxmut = maxIt->second;
+                maxmutIdx = maxmut-1;
+                //if(!std::isnan(maxmut) && maxmut > 0) {
+
+                if(maxmut > data.ref[pos])
+                    --maxmutIdx;
+                //determine number/index of mutation with maximum effect
+                double p95 = log2(utils::getPercentile(data.totalRelKD_perPos[pos][maxmutIdx], 95));
+                double p5 = log2(utils::getPercentile(data.totalRelKD_perPos[pos][maxmutIdx], 5));
+                mediansMax.push_back(log2(data.KDmedians[pos][maxmutIdx]));
+                perc95Max.push_back(p95);
+                perc5Max.push_back(p5);
+                perc75Max.push_back(log2(utils::getPercentile(data.totalRelKD_perPos[pos][maxmutIdx], 75)));
+                perc25Max.push_back(log2(utils::getPercentile(data.totalRelKD_perPos[pos][maxmutIdx], 25)));
+                actPositionsMax.push_back(pos);
+
+// 				}
+                if(data.ref[pos] == 1 && maxmut == 3)
+                    a2g.push_back(std::make_pair(pos, log2(data.KDmedians[pos][maxmutIdx])));
+
+                if(pos >= begin && pos <= end) {
+                    if(p95 > maxYMaxEff)
+                        maxYMaxEff = std::ceil(p95);
+                    if(p5 < minYMaxEff)
+                        minYMaxEff = std::floor(p5);
+                }
+            }
+            else
+            {
+                //if no (valid) maximal value -> plot position anyway but with 0.
+                perc95Max.push_back(0);
+                perc5Max.push_back(0);
+                perc75Max.push_back(0);
+                perc25Max.push_back(0);
+                mediansMax.push_back(0);
+                actPositionsMax.push_back(pos);
+            }
+
+            //only plot valid positions (filtered during processing)
+            if(maxIt != data.maxMut.end())
+            {
 				for(int mut=0; mut < 3; ++mut) {
 					double p95;
 					double p5;
@@ -875,8 +797,7 @@ namespace plot {
 					else
 						negEffPValue[mut].push_back(std::make_pair(pos, color));
 				}
-
-// 			}
+            }
 		}
 
         for(int pos=param.seqBegin; pos <= param.seqEnd; ++pos)
@@ -897,13 +818,8 @@ namespace plot {
 		Gnuplot* gp;
 		fs::path* file;
 
-//#ifdef _WIN32 || _WIN64
-//#ifndef __linux__
         fs::path gpFile(resDir+"/tmp/relKdwtMut.gp");
         std::string gnuplotCall = ">"+gpFile.string();
-//#else
-//       std::string gnuplotCall = "gnuplot -persist";
-//#endif
 
         if(svg) {
             yRef = (yTo-yFrom)/4;
@@ -924,9 +840,6 @@ namespace plot {
 			*gp << "set format x ''\n";
 			*gp << "set format y\n";
 
-//			*gp << "set ylabel ' '\n";
-// 			*gp << "set label 1 'rel. binding affiniy mut/wt' at graph 1.0, graph 0.5 rotate by 90 center offset 1,0\n";
-			
         }
         else if(eps) {
             yRef = (yTo-yFrom)/8;
@@ -958,8 +871,6 @@ namespace plot {
             if(!filenamePrefix.empty())
                 fileName += "_";
             file = new fs::path(resDir+"/plots"+fileName+filenamePrefix+".pdf");
-           // fs::path gpFile(resDir+"/tmp/relKdWtMut.gp");
-            //gp = new Gnuplot("tee "+ gpFile.string()+" | gnuplot -persist");
             gp = new Gnuplot(gnuplotCall);
 
             *gp << "set output '" << (*file).string() << "'\n";
@@ -1033,15 +944,13 @@ namespace plot {
 		(*gp).send1d(negEffPValue[1]);
 		(*gp).send1d(negEffPValue[2]);
 		
-//#ifndef __linux__
         if(!svg)
         {
             callGnuplot(gpFile, resDir);
             gpFile = resDir+"/tmp/maxEffectOnKd.gp";
             gnuplotCall = ">"+gpFile.string();
         }
-//#endif
-		
+
 		/* max effect graph */
 
         if(yFrom < minYMaxEff)
@@ -1137,16 +1046,16 @@ namespace plot {
 		*gp << "'-' notitle w filledcu lc rgb 'grey70', ";
 		*gp << "'-' notitle w filledcu lc rgb 'grey90', ";
         *gp << "'-' with lines lt 1 lc rgb 'black' lw 2 notitle, ";
-
+        *gp << "'-' notitle w lines lt -1 lw 1.5 lc rgb 'black', ";
         if(param.plotPValues)
         {
             if(svg)
                 //because the points will only be shown in black otherwise :(
-                *gp << "'-' using 1:2:('*'):3 with labels notitle center nopoint offset 0, -0.2 tc palette font 'Helvetica,35', ";
+                *gp << "'-' using 1:2:('*'):3 with labels notitle center nopoint offset 0, -0.25 tc palette font 'Helvetica,35'\n";
             else
-                *gp << "'-' with points pt 3 lc palette notitle, ";
+                *gp << "'-' with points pt 3 lc palette notitle\n";
         }
-        *gp << "'-' notitle w lines lt -1 lw 1.5 lc rgb 'black'\n";
+
 		
 
 		(*gp).send1d(boost::make_tuple(actPositionsMax, perc95Max, perc75Max));
@@ -1154,18 +1063,15 @@ namespace plot {
 		(*gp).send1d(boost::make_tuple(actPositionsMax, mediansMax, perc25Max));
 		(*gp).send1d(boost::make_tuple(actPositionsMax, perc25Max, perc5Max));
 		(*gp).send1d(std::make_pair(actPositionsMax, mediansMax));
+        (*gp).send1d(nullLine);
         if(param.plotPValues)
             (*gp).send1d(pValuesMaxEff);
-        (*gp).send1d(nullLine);
 		if(svg) {
 			*gp << "unset multiplot\n";
 			*gp << "set output\n";
 		}
-
         delete gp;
-//#ifndef __linux__
         callGnuplot(gpFile, resDir);
-//#endif
         return (*file).string();
 	}
 

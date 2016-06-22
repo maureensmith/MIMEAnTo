@@ -79,11 +79,7 @@ private slots:
 
      void on_saveProjectPushButton_clicked();
 
-     void on_saveRawKDvaluesPushButton_clicked();
-
      void on_saveErrorPlotPushButton_clicked();
-
-     void on_saveErrorsPushButton_clicked();
 
      void on_saveKDResultsPushButton_clicked();
 
@@ -104,6 +100,10 @@ private:
     bool joinErrorWarning();
 
     void handleStackedWidgetAndFooter(int index);
+
+    void on_saveErrorsPushButton_clicked();
+
+    void on_saveRawKDvaluesPushButton_clicked();
 
 };
 

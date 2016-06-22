@@ -72,12 +72,10 @@ use_maclibs {
     LIBS += ~/homebrew/Cellar/boost/1.60.0_2/lib/libboost_iostreams.a
 }
 
-#CC=$(CROSS)gcc
-#LD=$(CROSS)ld
-#AR=$(CROSS)ar
-#PKG_CONFIG=$(CROSS)pkg-config
-
-
 
 RESOURCES += \
     icons.qrc
+
+RC_FILE = icons.rc
+
+ICON = MIMEAnTo_Icon.icns

@@ -111,7 +111,6 @@ void MIMEMainWindow::on_nextStepPushButton_clicked()
 
 void MIMEMainWindow::on_backStepPushButton_clicked()
 {
-    //TODO: Warnung dass das auf dieser Seite berechnete weg ist.
     int index = ui->stackedWidget->currentIndex();
     int ret = QMessageBox::Ok;
     //warn only to go back, if something was computed:
@@ -157,6 +156,10 @@ QWidget* MIMEMainWindow::createDataCell() {
     QObject::connect(unboundButton, SIGNAL(clicked()), unboundLineEdit, SLOT(on_samplePushButton_clicked()));
     QPushButton *boundButton = new QPushButton("selected", cell);
     QObject::connect(boundButton, SIGNAL(clicked()), boundLineEdit, SLOT(on_samplePushButton_clicked()));
+    //TODO: if SAM parsing is possible, enable
+    unboundButton->setEnabled(false);
+    boundButton->setEnabled(false);
+
     boundButton->setGeometry(unboundButton->geometry());
     layout->addRow(unboundButton, unboundLineEdit);
     layout->addRow(boundButton, boundLineEdit);
@@ -577,8 +580,6 @@ void MIMEMainWindow::on_loadDataPushButton_clicked()
                     try
                     {
                         mutRateSamplePlotFile = plot::plotMutationRatePerSampleBoxplot(resultDir, dataDir, parameter, data, plot::SVG);
-
-//                        std::cout << mutRateSamplePlotFile << std::endl;
                         if(!mutRateSamplePlotFile.empty()) {
                             QFile file(QString::fromStdString(mutRateSamplePlotFile));
                             if (!file.open(QIODevice::ReadOnly)) {
@@ -903,8 +904,6 @@ void MIMEMainWindow::on_estimateErrorPushButton_clicked()
             //QApplication::setOverrideCursor(Qt::WaitCursor);
             //plot median error for bound and unbound
             string errorEstimationPlotFile = plot::plotMedianErrorPerSample(ui->resultDirLineEdit->text().toStdString(), parameter, data, plot::SVG);
-
-//            std::cout << errorEstimationPlotFile << std::endl;
             if(!errorEstimationPlotFile.empty()) {
                 QGraphicsSvgItem *item = new QGraphicsSvgItem(QString::fromStdString(errorEstimationPlotFile));
                 QGraphicsScene* scene = new QGraphicsScene();
@@ -1237,7 +1236,8 @@ void MIMEMainWindow::on_saveKDResultsPushButton_clicked()
         std::string filename;
         try
         {
-            filename = ioTools::writePositionWiseKDEstimates(resultDir, data, text.toStdString());
+           filename = ioTools::writePositionWiseKDEstimates(resultDir, data, text.toStdString());
+           filename += "\n"+ioTools::writePositionWiseMaxKD(resultDir, data, text.toStdString());
             if(!filename.empty())
                 Messages::filesAreSavedMessage(QString::fromStdString(filename));
         }

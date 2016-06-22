@@ -14,9 +14,11 @@ DataTableLineEdit::DataTableLineEdit(utils::SampleType type, QWidget *parent) :
         //this->setPlaceholderText(tr("(choose file for non-selected sample)"));
 }
 
+
 void DataTableLineEdit::mouseDoubleClickEvent(QMouseEvent *event) {
     Q_UNUSED(event);
-    this->on_samplePushButton_clicked();
+    //TODO: when SAM parsing is possible, uncomment
+    //this->on_samplePushButton_clicked();
 }
 
 utils::SampleType DataTableLineEdit::getType() {

@@ -47,6 +47,8 @@ namespace ioTools {
     void writeRawKDCriteria(const string& resultDir, utils::DataContainer& data, const string &filename);
 	
     std::string writePositionWiseKDEstimates(const string& resultDir, utils::DataContainer& data, const string& filenamePrefix = "");
+
+    std::string writePositionWiseMaxKD(const string &resDir, utils::DataContainer& data, const string &filenamePrefix = "");
     
     bool readPositionWiseKDEstimates(const string& resultDir, utils::DataContainer& data);
 
