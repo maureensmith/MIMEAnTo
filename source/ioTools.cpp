@@ -100,25 +100,32 @@ namespace ioTools {
                 getline(infile, line);
                 bool isFasta = (line.find(">") == 0);
                 int position = 1;
-
-                while(!infile.eof()) {
+                bool end = false;
+                while(!infile.eof() && !end) {
 
                     if(isFasta)
                     {
                        getline(infile, line);
-                       char c;
-                       while(ss.get(c))
+                       ss.clear();
+                       ss.str(line);
+                       end = (line.find(">") == 0);
+                       if(!end)
                        {
-
-                           if(c=='A' || c=='a')
-                               ref[position] = 1;
-                           else if(c=='C' || c=='c')
-                               ref[position] = 2;
-                           else if(c=='G' || c=='g')
-                               ref[position] = 3;
-                           else if(c=='T' || c=='t' || c=='U' || c=='u')
-                               ref[position] = 4;
-                           ++position;
+                           char c;
+                           while(ss.get(c))
+                           {
+                               if(c=='A' || c=='a')
+                                   ref[position] = 1;
+                               else if(c=='C' || c=='c')
+                                   ref[position] = 2;
+                               else if(c=='G' || c=='g')
+                                   ref[position] = 3;
+                               else if(c=='T' || c=='t' || c=='U' || c=='u')
+                                   ref[position] = 4;
+                               else //ignore white space and line breaks
+                                   continue;
+                               ++position;
+                           }
                        }
                     } else {
                         //because first position is read above
