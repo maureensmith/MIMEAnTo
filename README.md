@@ -1,0 +1,32 @@
+# MIMEAnTo
+Running MIMEAnTo
+-------------------
+Executables are available for Linux, Windows and Mac OS X. 
+The plots are created with gnuplot.
+
+In OS X a gnuplot executable is supplied within the MIMEAnTo bundle (downloaded from  http://ricardo.ecn.wfu.edu/pub/gnuplot/gnuplot-5.0.3-quartz.dmg). 
+Note, for newly compiled executables you need to add gnuplot to the bundle in the directory PlugIns, e.g. with the following commands:
+mkdir MIMEAnTo.app/Contents/PlugIns
+cp -r gnuplot/Gnuplot.app MIMEAnTo.app/Contents/PlugIns/
+
+On Windows the gnuplot executable is found in the subdirectory gnuplot (downloaded from https://sourceforge.net/projects/gnuplot/files/gnuplot/4.6.0/gp460win32.zip). The ENTIRE directory 'gnuplot' has to be in the same folder as the MIMEAnTo executable. 
+
+Only for Linux it is required that gnuplot is installed on the system and can be started from the terminal by typing 'gnuplot' (otherwise the path to the gnuplot executables has to be added to the environment variable PATH).
+
+
+Compiling MIMEAnTo
+---------------------
+To compile MIMEAnTo the boost libraries system, filesystem and iostreams and a compiler capable of c++11 are required.
+Qt is required in version 4.8 as it uses the modules QtCore, QtGui and QtSvg.
+In the given MIME.pro file the boost libraries are included with the flag
+LIBS += -lboost_system -lboost_filesystem -lboost_iostreams.
+(If necessary, the path to the libraries has to be adjusted.
+The path to the C++ headers can be added with QMAKE_CXXFLAGS += -Ipath/to/add/to/include/path.)
+
+Then call from the directory where you want your program files:
+qmake -o Makefile /path/to/sourcecode/MIME.pro
+make
+
+You can also compile it with the QtCreator.
+
+Note that gnuplot executables have to be available as mentioned above to run MIMEAnTo properly.
