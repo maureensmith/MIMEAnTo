@@ -656,7 +656,7 @@ namespace ioTools {
             outfile << "minSignal2NoiseStrength\t" << param.minSignal2NoiseStrength<< std::endl;
             outfile << "seqBegin\t" << param.seqBegin << std::endl;
             outfile << "seqEnd\t" << param.seqEnd << std::endl;
-            outfile << "weightThreshold\t" << param.weightThreshold<< std::endl;
+            outfile << "percOfMaxCov\t" << param.weightThreshold<< std::endl;
             outfile << "joinErrors\t" << std::boolalpha << param.joinErrors << std::endl;
             outfile << "plotYAxisFrom\t" << param.plotYAxisFrom<< std::endl;
             outfile << "plotYAxisTo\t" << param.plotYAxisTo<< std::endl;
@@ -724,7 +724,7 @@ namespace ioTools {
                         param.seqBegin = std::stoi(splittedLine[1]);
                     else if(splittedLine[0] == "seqEnd")
                         param.seqEnd = std::stoi(splittedLine[1]);
-                    else if(splittedLine[0] == "weightThreshold")
+                    else if(splittedLine[0] == "percOfMaxCov")
                         param.weightThreshold = boost::lexical_cast<double>(splittedLine[1]);
                     else if(splittedLine[0] == "joinErrors")
                          std::istringstream(splittedLine[1]) >> std::boolalpha >> param.joinErrors;

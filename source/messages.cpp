@@ -23,6 +23,7 @@ const QString Messages::ExitWarningText = "You are about to exit the program. Al
 const QString Messages::BackButtonWarningText = "You are about to go one step back. All unsaved data computed here will be lost.\nGo back anyway?";
 const QString Messages::ErrorDuringQualityCriteriaText = "An error occured during the application of the quality criteria.";
 const QString Messages::ErrorDuringRawKdValuesText = "An error occured during the computation of the raw Kd values.";
+const QString Messages::ResultDirDoesNotExistText = "The given result directory does not exist.";
 
 int Messages::askForDeletingPreviousResults()
 {
@@ -236,7 +237,7 @@ std::string Messages::errorDuringQualityCriteriaApplication()
     return Messages::ErrorDuringQualityCriteriaText.toStdString();
 }
 
-std::string Messages::ErrorDuringRawKdValuesCritical()
+std::string Messages::errorDuringRawKdValuesCritical()
 {
     QMessageBox msgBox;
     msgBox.setIcon(QMessageBox::Critical);
@@ -245,5 +246,13 @@ std::string Messages::ErrorDuringRawKdValuesCritical()
     return Messages::ErrorDuringRawKdValuesText.toStdString();
 }
 
+std::string Messages::resultDirDoesNotExistCritical()
+{
+    QMessageBox msgBox;
+    msgBox.setIcon(QMessageBox::Critical);
+    msgBox.setText(Messages::ResultDirDoesNotExistText);
+    msgBox.exec();
+    return Messages::ResultDirDoesNotExistText.toStdString();
+}
 
 

@@ -39,76 +39,175 @@ namespace processing {
 
     }
 
+    void getSingleErrorsAndWeights(const string& expDir, utils::Parameter& param, utils::refMap& ref, utils::sampleContainer& samples,
+                                  utils::WeightPerPosPair& weightPos, std::map<int, utils::WeightPerPosPair>& weightsPerSample,
+                                  utils::RatesPerPosPair& expRatesFalseDetect, std::map<int, utils::RatesPerPosPair>& expFalseDetectPerSample,
+                                   std::vector<int>& barcodes)
+    {
+        utils::sampleContainer::iterator sampleIt;
+        int numberOfExp = 0;
+
+        //for each experiment pair with wildtype(library=0)
+        for(sampleIt=samples.begin(); sampleIt != samples.end(); ++sampleIt) {
+            //for errors only exermine wt samples (lib = 0)
+            if((*sampleIt).library == 0) {
+                ++numberOfExp;
+                int barcode = (*sampleIt).barcode;
+                utils::countsPerPosPair countsPP;
+
+                ioTools::readExperimentFile(barcode, expDir+"/2d", countsPP);
+
+                for(int pos1 = param.seqBegin; pos1 <= param.seqEnd; ++pos1) {
+                    int pos2 = 1;
+                    for(auto pos2It = countsPP[pos1].begin(); pos2It != countsPP[pos1].end() && pos2 <= param.seqEnd; ++pos2It) {
+                        pos2 = pos2It->first;
+                        //only consider data in the given interval
+                        if(pos1 >= param.seqBegin && pos1 <= param.seqEnd && pos2 >= param.seqBegin && pos2 <= param.seqEnd) {
+                            int nucl1 = ref[pos1];
+                            int nucl2 = ref[pos2];
+                            countMutationFrequency(barcode, pos1, pos2, nucl1, nucl2, pos2It->second, weightPos, weightsPerSample,
+                                                   expRatesFalseDetect, expFalseDetectPerSample);
+                        }
+                    }
+                }
+                weightsPerSample[barcode].normalize();
+                barcodes.push_back(barcode);
+            }
+        }
+
+        // average Rate of all experiments
+        expRatesFalseDetect.divide(numberOfExp);
+
+        //normalize by maximamum value for position 1
+        weightPos.normalize();
+
+    }
+
+
+    void estimateErrorValuesForActualPosition(std::vector<int>& barcodes, int actualPos1,
+                                             std::map<int, std::multiset<double>>& sumsPerSample, std::vector<std::multiset<double>>& sums_perBase,
+                                             std::map<int, std::vector<std::multiset<double>>>& sumsPerSample_perBase,
+                                             std::map<int, std::vector<double>>& medianExpKappa_perBase,
+                                             std::map<int, std::map<int, double>>& medianExpKappaTotal_perSample,
+                                             std::map<int, std::map<int, double>>& perc75ExpKappaTotal_perSample,
+                                             std::map<int, std::map<int, double>>& perc25ExpKappaTotal_perSample,
+                                             std::map<int, std::map<int, std::vector<double>>>& medianExpKappaTotal_perBase_perSample)
+    {
+        //save collected values for last position, refresh the containers for next position
+        std::vector<double> medians(3);
+        for(int i = 0; i < 3; ++i) {
+            //TODO: funktioniert das noch obwohl ich nicht bound und unbound abfrage sondern nur das jeweilige??
+            //if(sums_perBaseBound[i].size() > 0 && sums_perBaseUnbound[i].size() > 0)
+            if(sums_perBase[i].size() > 0)
+                medians[i] = utils::getMedian(sums_perBase[i]);
+
+            sums_perBase[i].clear();
+        }
+        medianExpKappa_perBase[actualPos1] = medians;
+        // total error rate for each sample
+        for(auto barcodeIt = barcodes.begin(); barcodeIt != barcodes.end(); ++barcodeIt) {
+
+            int barcode = *barcodeIt;
+            //TODO: funktioniert das noch obwohl ich nicht bound und unbound abfrage sondern nur das jeweilige??
+//                if(!(sumsPerSampleBound[boundBarcode]).empty() && !(sumsPerSampleUnbound[unboundBarcode]).empty())
+            if(!(sumsPerSample[barcode]).empty())
+            {
+                medianExpKappaTotal_perSample[barcode][actualPos1] = utils::getMedian(sumsPerSample[barcode]);
+                perc25ExpKappaTotal_perSample[barcode][actualPos1] = utils::getPercentile(sumsPerSample[barcode], 25);
+                perc75ExpKappaTotal_perSample[barcode][actualPos1] = utils::getPercentile(sumsPerSample[barcode], 75);
+            }
+
+            (medianExpKappaTotal_perBase_perSample[barcode][actualPos1]).resize(3);
+
+            std::vector<double> medians(3);
+            for(int i= 0; i < 3; ++i)
+            {
+                 //TODO: funktioniert das noch obwohl ich nicht bound und unbound abfrage sondern nur das jeweilige??
+                //if(!(sumsPerSample_perBaseBound[boundBarcode][i]).empty() && !(sumsPerSample_perBaseUnbound[unboundBarcode][i]).empty())
+                if(!(sumsPerSample_perBase[barcode][i]).empty())
+                {
+                    medians[i] = utils::getMedian(sumsPerSample_perBase[barcode][i]);
+                }
+                sumsPerSample_perBase[barcode][i].clear();
+            }
+            medianExpKappaTotal_perBase_perSample[barcode][actualPos1] = medians;
+        }
+    }
+
+    void collectValuesForActualPosition(int wtBase1, int wtBase2, int pos1, int pos2, double weightThreshold, std::vector<int>& barcodes,
+                                        std::vector<double>& totalSum_perBase, std::vector<std::multiset<double>>& sums_perBase,
+                                        std::map<int, std::multiset<double>>& sumsPerSample, std::map<int, std::vector<std::multiset<double>>>& sumsPerSample_perBase,
+                                        utils::RatesPerPosPair& expRatesFalseDetect, std::map<int, utils::RatesPerPosPair>& expFalseDetectPerSample,
+                                        utils::WeightPerPosPair& weightPos, std::map<int, utils::WeightPerPosPair>& weightsPerSample)
+    {
+        if(weightPos[std::make_pair(pos1, pos2)] > weightThreshold) {
+            utils::rateArray countvalues = expRatesFalseDetect.getValues(pos1, pos2);
+            // save positions per pair, where nucl1 is mutant and nucl2 is wt
+            for(int mnucl=1, i=0; mnucl<5; ++mnucl) {
+                if(wtBase1 != mnucl) {
+                    int idx = 4*(mnucl-1)+wtBase2-1;
+                    if(countvalues[idx] > 0) {
+                        sums_perBase[i].insert(countvalues[idx]);
+                         totalSum_perBase[i] += countvalues[idx];
+                    }
+                    ++i;
+                }
+            }
+        }
+
+        // samplewise error estimation
+        for(auto barcodeIt = barcodes.begin(); barcodeIt != barcodes.end(); ++barcodeIt) {
+            int barcode = *barcodeIt;
+
+            if(sumsPerSample_perBase.find(barcode) == sumsPerSample_perBase.end())
+                (sumsPerSample_perBase[barcode]).resize(3);
+
+            if(weightsPerSample[barcode][std::make_pair(pos1, pos2)] > weightThreshold) {
+                utils::rateArray countvalues = expFalseDetectPerSample[barcode].getValues(pos1, pos2);
+                //total sum of mutations
+                double sum = 0;
+                // save positions per pair, where nucl1 is mutant and nucl2 is wt
+                for(int mnucl=1, i=0; mnucl<5; ++mnucl) {
+                    if(wtBase1 != mnucl) {
+                        int idx = 4*(mnucl-1)+wtBase2-1;
+                        if(countvalues[idx] > 0)
+                            sumsPerSample_perBase[barcode][i].insert(countvalues[idx]);
+                        sum += countvalues[idx];
+                        ++i;
+                    }
+                }
+                if(sum > 0)
+                    sumsPerSample[barcode].insert(sum);
+            }
+        }
+    }
+
     void estimateError(const string& expDir, utils::Parameter& param, utils::DataContainer& data) {
 		std::cout << "Estimate Error...." << std::endl;
 
         //clear data before computing
         data.clearErrors();
 
-		utils::sampleContainer::iterator boundIt, unboundIt;
-        int numberOfExp = 0;
-		//Count number of wt samples for each pair of positions
-		utils::WeightPerPosPair weightPosBound;
-		utils::WeightPerPosPair weightPosUnbound;		
-		
-		utils::RatesPerPosPair expRatesFalseDetectBound;
-		utils::RatesPerPosPair expRatesFalseDetectUnbound;
-		
-		//for the compariso of each sample (error plot and variation coefficient)		
-		std::map<int, utils::WeightPerPosPair> weightsPerSampleBound;
-		std::map<int, utils::WeightPerPosPair> weightsPerSampleUnbound;
-		
-		std::map<int, utils::RatesPerPosPair> expFalseDetectPerSampleBound;
-		std::map<int, utils::RatesPerPosPair> expFalseDetectPerSampleUnbound;
+        //Count number of wt samples for each pair of positions
+        utils::WeightPerPosPair weightPosBound;
+        utils::WeightPerPosPair weightPosUnbound;
+        //expected rate of false detection (error rate)
+        utils::RatesPerPosPair expRatesFalseDetectBound;
+        utils::RatesPerPosPair expRatesFalseDetectUnbound;
 
+        //for the comparison of each sample (error plot and variation coefficient)
+        std::map<int, utils::WeightPerPosPair> weightsPerSampleBound;
+        std::map<int, utils::WeightPerPosPair> weightsPerSampleUnbound;
 
-		//for each experiment pair with wildtype(library=0)
-        for(boundIt=data.bound.begin(), unboundIt=data.unbound.begin(); boundIt != data.bound.end(); ++boundIt, ++unboundIt) {
+        std::map<int, utils::RatesPerPosPair> expFalseDetectPerSampleBound;
+        std::map<int, utils::RatesPerPosPair> expFalseDetectPerSampleUnbound;
 
-            //for errors only exermine wt samples (lib = 0)
-            if((*boundIt).library == 0) {
-                ++numberOfExp;
-                int boundBarcode = (*boundIt).barcode;
-                int unboundBarcode = (*unboundIt).barcode;
+        //barcodes wor the wildtyp samples for easier iteration
+        std::vector<int> boundBarcodes;
+        std::vector<int> unboundBarcodes;
 
-                utils::countsPerPosPair boundCountsPP;
-                utils::countsPerPosPair unboundCountsPP;
-                ioTools::readExperimentFile(boundBarcode, expDir+"/2d", boundCountsPP);
-                ioTools::readExperimentFile(unboundBarcode, expDir+"/2d", unboundCountsPP);
-                //hier nicht parallelisierbar wegen iterator... mögliche lösungen: 2 for schleifen (pos1, pos2) oder __gnu_parallel for each?
-//                #pragma omp parallel for schedule(guided, 10) default(none) shared(std::cout, boundBarcode, unboundBarcode, param, data, weightPosBound, weightPosUnbound, weightPosTotal, expRatesFalseDetectBound, expRatesFalseDetectUnbound, expRatesFalseDetectTotal, boundCountsPP, unboundCountsPP)
-//                for(utils::countsPerPosPair::iterator pos1PairIt = boundCountsPP.begin(); posPairIt != boundCountsPP.end(); ++posPairIt) {
-                for(int pos1 = param.seqBegin; pos1 <= param.seqEnd; ++pos1) {
-                    int pos2 = 1;
-                    for(auto boundPos2It = boundCountsPP[pos1].begin(); boundPos2It != boundCountsPP[pos1].end() && pos2 <= param.seqEnd; ++boundPos2It) {
-
-                          pos2 = boundPos2It->first;
-
-                        //only consider data in the given interval
-                        if(pos1 >= param.seqBegin && pos1 <= param.seqEnd && pos2 >= param.seqBegin && pos2 <= param.seqEnd) {
-                            int nucl1 = data.ref[pos1];
-                            int nucl2 = data.ref[pos2];
-                             /**** Auslagern ****/
-                            countMutationFrequency(boundBarcode, pos1, pos2, nucl1, nucl2, boundPos2It->second, weightPosBound, weightsPerSampleBound,
-                                                   expRatesFalseDetectBound, expFalseDetectPerSampleBound);
-                            countMutationFrequency(unboundBarcode, pos1, pos2, nucl1, nucl2, unboundCountsPP[pos1][pos2], weightPosUnbound, weightsPerSampleUnbound,
-                                                  expRatesFalseDetectUnbound, expFalseDetectPerSampleUnbound);
-
-                        }
-                    }
-                }
-                weightsPerSampleBound[boundBarcode].normalize();
-                weightsPerSampleUnbound[unboundBarcode].normalize();
-            }
-		}
-		
-		// average Rate of all experiments
-		expRatesFalseDetectBound.divide(numberOfExp);
-		expRatesFalseDetectUnbound.divide(numberOfExp);
-		
-		//normalize by maximamum value for position 1
-		weightPosBound.normalize();
-		weightPosUnbound.normalize();
+        getSingleErrorsAndWeights(expDir, param, data.ref, data.bound, weightPosBound, weightsPerSampleBound, expRatesFalseDetectBound, expFalseDetectPerSampleBound, boundBarcodes);
+        getSingleErrorsAndWeights(expDir, param, data.ref, data.unbound, weightPosUnbound, weightsPerSampleUnbound, expRatesFalseDetectUnbound, expFalseDetectPerSampleUnbound, unboundBarcodes);
 		
 		int actualPos1 = param.seqBegin;
 		std::map<int, std::multiset<double>> sumsPerSampleBound;
@@ -122,202 +221,48 @@ namespace processing {
 
 		std::vector<double> totalSum_perBase(3);
 
+        //for loop with bound (but unbound should have the same amount of position pairs)
         for(utils::RatesPerPosPair::iterator it = expRatesFalseDetectBound.begin(); it != expRatesFalseDetectBound.end(); ++it) {
             int pos1 = expRatesFalseDetectBound.getFirstPos(it);
             int pos2 = expRatesFalseDetectBound.getSecondPos(it);
 			int wtBase1 = data.ref[pos1];
 			int wtBase2 = data.ref[pos2];
-			
+
 			if(pos1 != actualPos1) {
-				//save collected values for last position, refresh the containers for next position
                 if(!(totalSum_perBase[0] == 0 && totalSum_perBase[1] == 0 && totalSum_perBase[2] == 0)) {
-					std::vector<double> mediansBound(3);
-					std::vector<double> mediansUnbound(3);
-					for(int i = 0; i < 3; ++i) {
-                        if(sums_perBaseBound[i].size() > 0 && sums_perBaseUnbound[i].size() > 0)
-                        {
-                            mediansBound[i] = utils::getMedian(sums_perBaseBound[i]);
-                            mediansUnbound[i] = utils::getMedian(sums_perBaseUnbound[i]);
-                        }
-									
-						totalSum_perBase[i] = 0;
-                        sums_perBaseBound[i].clear();
-                        sums_perBaseUnbound[i].clear();
-					}
-					data.medianExpKappaBound_perBase[actualPos1] = mediansBound;
-					data.medianExpKappaUnbound_perBase[actualPos1] = mediansUnbound;
-					
-					// total error rate for each sample
-					for(auto boundIt = weightsPerSampleBound.begin(), unboundIt = weightsPerSampleUnbound.begin();  boundIt != weightsPerSampleBound.end(); ++boundIt, ++unboundIt) {
+                    estimateErrorValuesForActualPosition(boundBarcodes, actualPos1, sumsPerSampleBound, sums_perBaseBound, sumsPerSample_perBaseBound,
+                                                             data.medianExpKappaBound_perBase, data.medianExpKappaTotal_perSampleBound,
+                                                             data.perc75ExpKappaTotal_perSampleBound, data.perc25ExpKappaTotal_perSampleBound,
+                                                             data.medianExpKappaTotal_perBase_perSampleBound);
+                    estimateErrorValuesForActualPosition(unboundBarcodes, actualPos1, sumsPerSampleUnbound, sums_perBaseUnbound, sumsPerSample_perBaseUnbound,
+                                                             data.medianExpKappaUnbound_perBase, data.medianExpKappaTotal_perSampleUnbound,
+                                                             data.perc75ExpKappaTotal_perSampleUnbound, data.perc25ExpKappaTotal_perSampleUnbound,
+                                                             data.medianExpKappaTotal_perBase_perSampleUnbound);
+                }
 
-						int boundBarcode = boundIt->first;
-						int unboundBarcode = unboundIt->first;
-                        if(!(sumsPerSampleBound[boundBarcode]).empty() && !(sumsPerSampleUnbound[unboundBarcode]).empty())
-                        {
-                            data.medianExpKappaTotal_perSampleBound[boundBarcode][actualPos1] = utils::getMedian(sumsPerSampleBound[boundBarcode]);
-                            data.medianExpKappaTotal_perSampleUnbound[unboundBarcode][actualPos1] = utils::getMedian(sumsPerSampleUnbound[unboundBarcode]);
-
-                            data.perc25ExpKappaTotal_perSampleBound[boundBarcode][actualPos1] = utils::getPercentile(sumsPerSampleBound[boundBarcode], 25);
-                            data.perc25ExpKappaTotal_perSampleUnbound[unboundBarcode][actualPos1] = utils::getPercentile(sumsPerSampleUnbound[unboundBarcode], 25);
-                            data.perc75ExpKappaTotal_perSampleBound[boundBarcode][actualPos1] = utils::getPercentile(sumsPerSampleBound[boundBarcode], 75);
-                            data.perc75ExpKappaTotal_perSampleUnbound[unboundBarcode][actualPos1] = utils::getPercentile(sumsPerSampleUnbound[unboundBarcode], 75);
-                        }
-
-                        (data.medianExpKappaTotal_perBase_perSampleBound[boundBarcode][actualPos1]).resize(3);
-
-                        (data.medianExpKappaTotal_perBase_perSampleUnbound[boundBarcode][actualPos1]).resize(3);
-                        std::vector<double> mediansBound(3);
-                        std::vector<double> mediansUnbound(3);
-                        for(int i= 0; i < 3; ++i)
-                        {
-                            if(!(sumsPerSample_perBaseBound[boundBarcode][i]).empty() && !(sumsPerSample_perBaseUnbound[unboundBarcode][i]).empty())
-                            {
-                                mediansBound[i] = utils::getMedian(sumsPerSample_perBaseBound[boundBarcode][i]);
-                                mediansUnbound[i] = utils::getMedian(sumsPerSample_perBaseUnbound[unboundBarcode][i]);
-                            }
-                            sumsPerSample_perBaseBound[boundBarcode][i].clear();
-                            sumsPerSample_perBaseUnbound[unboundBarcode][i].clear();
-                        }
-                        data.medianExpKappaTotal_perBase_perSampleBound[boundBarcode][actualPos1] = mediansBound;
-                        data.medianExpKappaTotal_perBase_perSampleUnbound[unboundBarcode][actualPos1] = mediansUnbound;
-					}
-				} 
+                //clear here because it's used for both bound and unbound
+                for(int i = 0; i < 3; ++i)
+                    totalSum_perBase[i] = 0;
 				actualPos1 = pos1;
 			}
 			
-			
-            if(weightPosBound[std::make_pair(pos1, pos2)] > param.weightThreshold) {
-				utils::rateArray countvalues = expRatesFalseDetectBound.getValues(pos1, pos2);
-				// save positions per pair, where nucl1 is mutant and nucl2 is wt
-				for(int mnucl=1, i=0; mnucl<5; ++mnucl) {					
-					if(wtBase1 != mnucl) {
-						int idx = 4*(mnucl-1)+wtBase2-1;
-						if(countvalues[idx] > 0) {
-							sums_perBaseBound[i].insert(countvalues[idx]);
-                            totalSum_perBase[i] += countvalues[idx];
-						} 					
-						++i;
-					}
-				}
-            }
-			
-            if(weightPosUnbound[std::make_pair(pos1, pos2)] > param.weightThreshold) {
-				utils::rateArray countvalues = expRatesFalseDetectUnbound.getValues(pos1, pos2);
-				// save positions per pair, where nucl1 is mutant and nucl2 is wt
-				for(int mnucl=1, i=0; mnucl<5; ++mnucl) {					
-					if(wtBase1 != mnucl) {
-						int idx = 4*(mnucl-1)+wtBase2-1;
-						if(countvalues[idx] > 0) {
-							sums_perBaseUnbound[i].insert(countvalues[idx]);
-                             totalSum_perBase[i] += countvalues[idx];
-						} 
-						++i;
-					}
-				}
-            }
-			
-            // samplewise error estimation
-			for(auto boundIt = weightsPerSampleBound.begin(), unboundIt=weightsPerSampleUnbound.begin();  boundIt != weightsPerSampleBound.end(); ++boundIt, ++unboundIt) {
-				int boundBarcode = boundIt->first;
-				int unboundBarcode = unboundIt->first;
-                if(sumsPerSample_perBaseBound.find(boundBarcode) == sumsPerSample_perBaseBound.end()) {
-                    (sumsPerSample_perBaseBound[boundBarcode]).resize(3);
-                }
-
-                if(sumsPerSample_perBaseUnbound.find(unboundBarcode) == sumsPerSample_perBaseUnbound.end()) {
-                    (sumsPerSample_perBaseUnbound[unboundBarcode]).resize(3);
-                }
-                if(weightsPerSampleBound[boundBarcode][std::make_pair(pos1, pos2)] > param.weightThreshold) {
-
-					utils::rateArray countvalues = expFalseDetectPerSampleBound[boundBarcode].getValues(pos1, pos2);
-					//total sum of mutations
-					double sum = 0;
-					// save positions per pair, where nucl1 is mutant and nucl2 is wt
-					for(int mnucl=1, i=0; mnucl<5; ++mnucl) {
-						if(wtBase1 != mnucl) {
-							int idx = 4*(mnucl-1)+wtBase2-1;
-                            if(countvalues[idx] > 0) {                                
-                                sumsPerSample_perBaseBound[boundBarcode][i].insert(countvalues[idx]);
-                            }
-							sum += countvalues[idx];
-							++i;
-						}
-					}
-
-					if(sum > 0) {
-						sumsPerSampleBound[boundBarcode].insert(sum);
-					}
-				}
-                if(weightsPerSampleUnbound[unboundBarcode][std::make_pair(pos1, pos2)] > param.weightThreshold) {
-					sumsPerSample_perBaseUnbound[unboundBarcode].resize(3);
-					utils::rateArray countvalues = expFalseDetectPerSampleUnbound[unboundBarcode].getValues(pos1, pos2);
-					//total sum of mutations
-					double sum = 0;
-					// save positions per pair, where nucl1 is mutant and nucl2 is wt
-					for(int mnucl=1, i=0; mnucl<5; ++mnucl) {
-						if(wtBase1 != mnucl) {
-							int idx = 4*(mnucl-1)+wtBase2-1;
-                            if(countvalues[idx] > 0) {
-                                sumsPerSample_perBaseUnbound[unboundBarcode][i].insert(countvalues[idx]);
-                            }
-							sum += countvalues[idx];
-							++i;
-						}
-					}
-					if(sum > 0) {
-						sumsPerSampleUnbound[unboundBarcode].insert(sum);
-					}
-				}
-			}
-
+            collectValuesForActualPosition(wtBase1, wtBase2, pos1, pos2, param.weightThreshold, boundBarcodes, totalSum_perBase, sums_perBaseBound,
+                                           sumsPerSampleBound, sumsPerSample_perBaseBound, expRatesFalseDetectBound, expFalseDetectPerSampleBound,
+                                           weightPosBound, weightsPerSampleBound);
+            collectValuesForActualPosition(wtBase1, wtBase2, pos1, pos2, param.weightThreshold, unboundBarcodes, totalSum_perBase, sums_perBaseUnbound,
+                                           sumsPerSampleUnbound, sumsPerSample_perBaseUnbound, expRatesFalseDetectUnbound, expFalseDetectPerSampleUnbound,
+                                           weightPosUnbound, weightsPerSampleUnbound);
 		}
 		
 		//add last item
-        if(!(totalSum_perBase[0] == 0 && totalSum_perBase[1] == 0 && totalSum_perBase[2] == 0)) {
-			std::vector<double> mediansBound(3);
-			std::vector<double> mediansUnbound(3);
-			for(int i = 0; i < 3; ++i) {
-                if(!(sums_perBaseBound[i]).empty() && !(sums_perBaseUnbound[i]).empty())
-                {
-                    mediansBound[i] = utils::getMedian(sums_perBaseBound[i]);
-                    mediansUnbound[i] = utils::getMedian(sums_perBaseUnbound[i]);
-                }
-				
-				totalSum_perBase[i] = 0;
-				sums_perBaseBound[i].clear();
-				sums_perBaseUnbound[i].clear();
-			}
-			data.medianExpKappaBound_perBase[actualPos1] = mediansBound;
-			data.medianExpKappaUnbound_perBase[actualPos1] = mediansUnbound;
-			
-			// total error rate for each sample
-            for(auto boundIt = weightsPerSampleBound.begin(), unboundIt=weightsPerSampleUnbound.begin();  boundIt != weightsPerSampleBound.end(); ++boundIt, ++unboundIt)
-            {
-				int boundBarcode = boundIt->first;
-				int unboundBarcode = unboundIt->first;
-                if(!(sumsPerSampleBound[boundBarcode]).empty() && !(sumsPerSampleUnbound[unboundBarcode]).empty())
-                {
-                    data.medianExpKappaTotal_perSampleBound[boundBarcode][actualPos1] = utils::getMedian(sumsPerSampleBound[boundBarcode]);
-                    data.medianExpKappaTotal_perSampleUnbound[unboundBarcode][actualPos1] = utils::getMedian(sumsPerSampleUnbound[unboundBarcode]);
-                }
-
-                (data.medianExpKappaTotal_perBase_perSampleBound[boundBarcode][actualPos1]).resize(3);
-                (data.medianExpKappaTotal_perBase_perSampleUnbound[boundBarcode][actualPos1]).resize(3);
-                std::vector<double> mediansBound(3);
-                std::vector<double> mediansUnbound(3);
-                for(int i= 0; i < 3; ++i) {
-                    if(!(sumsPerSample_perBaseBound[boundBarcode][i]).empty() && !(sumsPerSample_perBaseUnbound[unboundBarcode][i]).empty())
-                    {
-                        mediansBound[i] = utils::getMedian(sumsPerSample_perBaseBound[boundBarcode][i]);
-                        mediansUnbound[i] = utils::getMedian(sumsPerSample_perBaseUnbound[unboundBarcode][i]);
-                    }
-                    sumsPerSample_perBaseBound[boundBarcode][i].clear();
-                    sumsPerSample_perBaseUnbound[unboundBarcode][i].clear();
-                }
-                data.medianExpKappaTotal_perBase_perSampleBound[boundBarcode][actualPos1] = mediansBound;
-                data.medianExpKappaTotal_perBase_perSampleUnbound[unboundBarcode][actualPos1] = mediansUnbound;
-			}
-		} 
+        estimateErrorValuesForActualPosition(boundBarcodes, actualPos1, sumsPerSampleBound, sums_perBaseBound, sumsPerSample_perBaseBound,
+                                                 data.medianExpKappaBound_perBase, data.medianExpKappaTotal_perSampleBound,
+                                                 data.perc75ExpKappaTotal_perSampleBound, data.perc25ExpKappaTotal_perSampleBound,
+                                                 data.medianExpKappaTotal_perBase_perSampleBound);
+        estimateErrorValuesForActualPosition(unboundBarcodes, actualPos1, sumsPerSampleUnbound, sums_perBaseUnbound, sumsPerSample_perBaseUnbound,
+                                                 data.medianExpKappaUnbound_perBase, data.medianExpKappaTotal_perSampleUnbound,
+                                                 data.perc75ExpKappaTotal_perSampleUnbound, data.perc25ExpKappaTotal_perSampleUnbound,
+                                                 data.medianExpKappaTotal_perBase_perSampleUnbound);
 	}
 
     /************************* Compute KD values *********************************/
@@ -597,7 +542,6 @@ namespace processing {
                 data.pvalues[pos1].resize(3);
                 data.KDmedians[pos1].resize(3);
 
-
                 std::vector<std::multiset<double>> validKdsForPercentile(3);
 
                 //remember indices where upper or lower estimate is made and has to be replaced by median/percentile
@@ -614,8 +558,7 @@ namespace processing {
                 for(unsigned int i=0; i < data.numSeqPerPosPairBound[pos1].size(); ++i) {
                     for(int mnucl=1, mut=0; mnucl<5 && mut<3; ++mnucl) {
 
-                        if(wtBase1 != mnucl) {
-
+                        if(wtBase1 != mnucl) {         
                             if(data.totalRelKD_perPos[pos1][mut].size() > 0)
                             {
                                   if((data.signal2noiseBound_perPos[pos1][mut][i] < param.minSignal2NoiseStrength
@@ -635,7 +578,7 @@ namespace processing {
                                     ++data.upperLimitsKD_perPos[pos1][mut];
                                     upperBoundIdx[mut].push_back(i);
                                 } else {
-                                    validKdsForPercentile[mut].insert(data.totalRelKD_perPos[pos1][mut][i]);
+                                    validKdsForPercentile[mut].insert(data.totalRelKD_perPos[pos1][mut][i]);                                   
                                     //count number of ressamplings (whicht are not nan) and numbers of binding increasing and decreasing mutations
                                     double KDvalue_log2 = log2(data.totalRelKD_perPos[pos1][mut][i]);
                                     //careful: not all compiler like isnan
@@ -724,7 +667,6 @@ namespace processing {
                                 }
                             }
 
-
                             if(data.numberOfKDs[pos1][mut] >= param.minNumberEstimatableKDs) {
                                 //collect all  pvalues for Benjamini Hochberg method
                                 pvalues.push_back(min(numberOfKDs_smallerZero[pos1][mut], numberOfKDs_greaterZero[pos1][mut])/(double)data.numberOfKDs[pos1][mut]);
@@ -768,15 +710,14 @@ namespace processing {
 			double maxMedian = 0;
 
 			for(int mnucl=1, mut=0; mnucl<5 && mut<3; ++mnucl) {
-				if(wtBase1 != mnucl) {
+				if(wtBase1 != mnucl) {    
 					if(!std::isnan(pvaluesIdx[pos1][mut])) {
 						
 						data.pvalues[pos1][mut] = pvalues[pvaluesIdx[pos1][mut]];
 						
 // 						find maximum median, if medians < alpha are existant, consider only those. if not consider all
                         if(!(data.totalRelKD_perPos[pos1][mut]).empty())
-                            data.KDmedians[pos1][mut] = utils::getPercentile(data.totalRelKD_perPos[pos1][mut], 50);
-
+                            data.KDmedians[pos1][mut] = utils::getPercentile(data.totalRelKD_perPos[pos1][mut], 50);                      
 						double currentMedian = abs(log2(data.KDmedians[pos1][mut]));
 						bool isAlpha = pvalueSmallerAlpha[pvaluesIdx[pos1][mut]];
                         //ignore in virion cases where wt=A and mut=G
@@ -793,7 +734,7 @@ namespace processing {
 					++mut;
 				}
 			}			
-			
+
 			if(maxMut > 0) {
 				
 				data.maxMut[pos1] = maxMut;

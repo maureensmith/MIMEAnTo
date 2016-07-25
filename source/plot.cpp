@@ -376,6 +376,11 @@ namespace plot {
 
         *gp << "set grid ytics linestyle 0\n";
         *gp << "set xrange [" << param.seqBegin-5 << ":" << param.seqEnd+5 << "]\n";
+        if(maxCoeffBound < 10.0 && maxCoeffUnbound < 10.0)
+            *gp << "set yrange [-0.5:10]\n";
+        else
+             *gp << "set yrange [-0.5:" << max(maxCoeffBound, maxCoeffUnbound)+1.0 << "]\n";
+
         *gp << "set xlabel 'Sequence position'\n";
         *gp << "set ylabel 'Coefficient of variation (%)'\n";
         *gp << "set key outside right vertical top Right\n";

@@ -28,6 +28,7 @@ private:
     static const QString BackButtonWarningText;
     static const QString ErrorDuringQualityCriteriaText;
     static const QString ErrorDuringRawKdValuesText;
+    static const QString ResultDirDoesNotExistText;
 
 public:
     static int askForDeletingPreviousResults();
@@ -54,7 +55,8 @@ public:
     static std::string notEnoughDataCritical();
     static std::string sampleDataIsWrongCritical();
     static std::string errorDuringQualityCriteriaApplication();
-    static std::string ErrorDuringRawKdValuesCritical();
+    static std::string errorDuringRawKdValuesCritical();
+    static std::string resultDirDoesNotExistCritical();
 
     static const QString OpenParameterFileText;
     static const QString OpenReferenceFileText;

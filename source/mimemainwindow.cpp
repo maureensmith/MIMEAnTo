@@ -128,17 +128,16 @@ void MIMEMainWindow::on_backStepPushButton_clicked()
 
 void MIMEMainWindow::on_saveProjectPushButton_clicked()
 {
-    string resultDir = ui->resultDirLineEdit->text().toStdString();
-    if(ioTools::dirExists(resultDir))
+    if(ioTools::dirExists(parameter.resultDir))
     {
         try
         {
-                ioTools::writeParameterFile(resultDir, parameter, data);
+                ioTools::writeParameterFile(parameter.resultDir, parameter, data);
         }
         catch(std::exception& e)
         {
             std::string errorMsg = "Save project: \n" + Messages::savingWentWrongCritical() + "\n" + e.what() +  "\n";
-            ioTools::writeErrorLog(resultDir, errorMsg);
+            ioTools::writeErrorLog(parameter.resultDir, errorMsg);
         }
     }
 }
@@ -233,7 +232,10 @@ bool MIMEMainWindow::joinErrorWarning()
     {
         ret = Messages::askForDeletingPreviousResults();
         if(ret == QMessageBox::Ok) {
-            ioTools::removeKDFiles(ui->resultDirLineEdit->text().toStdString());
+            if(ioTools::dirExists(parameter.resultDir))
+                ioTools::removeKDFiles(parameter.resultDir);
+            else
+                Messages::resultDirDoesNotExistCritical();
         }
     }
 
@@ -263,7 +265,7 @@ void MIMEMainWindow::initErrorEstimationPage() {
     data.clearErrors();
 
     //enable button to load data if error file exist in reslut directory
-    ui->loadErrorPushButton->setEnabled(ioTools::errorFilesExist(ui->resultDirLineEdit->text().toStdString()));
+    ui->loadErrorPushButton->setEnabled(ioTools::dirExists(parameter.resultDir) && ioTools::errorFilesExist(parameter.resultDir));
     enableErrorSaveButtons(false);
     //checkstate to join errors of the last computation
     ui->joinErrorsCheckBox->setChecked(parameter.joinErrors);
@@ -309,7 +311,7 @@ void MIMEMainWindow::initKDComputationPage() {
     ui->saveKDImageToSpinBox->setMinimum(parameter.seqBegin);
     ui->saveKDImageToSpinBox->setMaximum(parameter.seqEnd);
     //enable button to load data if raw KD value file exist in reslut directory
-    ui->loadRawKDValuesPushButton->setEnabled(ioTools::kDFileExists(ui->resultDirLineEdit->text().toStdString()));
+    ui->loadRawKDValuesPushButton->setEnabled(ioTools::dirExists(parameter.resultDir) && ioTools::kDFileExists(parameter.resultDir));
 
     ui->alphaDoubleSpinBox->setValue(parameter.alpha);
     ui->weightThrKDSpinBox->setValue(parameter.weightThreshold*100);
@@ -344,16 +346,17 @@ void MIMEMainWindow::on_resultDirPushButton_clicked()
                                                     | QFileDialog::DontResolveSymlinks);
     if(!dir.isEmpty())
         ui->resultDirLineEdit->setText(dir);
-
     // if parameter file exists in result dir: offer to read them
 //    ui->loadProjectPushButton->setEnabled(ioTools::fileExists(ui->resultDirLineEdit->text().toStdString(), "parameter.txt"));
 
 
       //delete tmp files from last session
-      if(ioTools::dirExists(ui->resultDirLineEdit->text().toStdString()))
+      std::string resultDir = ui->resultDirLineEdit->text().toStdString();
+      if(ioTools::dirExists(resultDir))
       {
-          ioTools::removeTmpFiles(ui->resultDirLineEdit->text().toStdString());
-          ui->loadProjectPushButton->setEnabled(ioTools::dirExists(dir.toStdString()));
+          parameter.resultDir = resultDir;
+          ioTools::removeTmpFiles(resultDir);
+          ui->loadProjectPushButton->setEnabled(true);
       }
 }
 
@@ -425,240 +428,223 @@ void MIMEMainWindow::on_referencePushButton_clicked()
 
 void MIMEMainWindow::on_loadDataPushButton_clicked()
 {
-    //if da is changed and before errors or KD values have been computed, they will be deleted
-    QObject* obj = sender();
-    int ret = QMessageBox::Ok;
-    //only ask of there is already something computed
-    if(obj == ui->loadDataPushButton && (ioTools::errorFilesExist(ui->resultDirLineEdit->text().toStdString()) || ioTools::kDFileExists(ui->resultDirLineEdit->text().toStdString()))) {
+    std::string resultDir = ui->resultDirLineEdit->text().toStdString();
+    if(ioTools::dirExists(resultDir)) {
+        parameter.resultDir = resultDir;
 
-        ret = Messages::askForDeletingPreviousResults();
+        //if da is changed and before errors or KD values have been computed, they will be deleted
+        QObject* obj = sender();
+        int ret = QMessageBox::Ok;
+        //only ask of there is already something computed
+        if(obj == ui->loadDataPushButton && (ioTools::errorFilesExist(parameter.resultDir) || ioTools::kDFileExists(parameter.resultDir))) {
 
-        if(ret == QMessageBox::Ok) {
-            ioTools::removeErrorFiles(ui->resultDirLineEdit->text().toStdString());
-            ioTools::removeKDFiles(ui->resultDirLineEdit->text().toStdString());
+            ret = Messages::askForDeletingPreviousResults();
+
+            if(ret == QMessageBox::Ok) {
+                ioTools::removeErrorFiles(parameter.resultDir);
+                ioTools::removeKDFiles(parameter.resultDir);
+            }
         }
-    }
 
-    if(ret == QMessageBox::Ok)
-    {
-        QApplication::setOverrideCursor(Qt::WaitCursor);
-        MIMEMainWindow::enableSanitySaveButtons(false);
-
-        ui->saveProjectPushButton->setEnabled(false);
-        ui->nextStepPushButton->setEnabled(false);
-        if(!ui->referenceLineEdit->text().isEmpty() && !ui->resultDirLineEdit->text().isEmpty())
+        if(ret == QMessageBox::Ok)
         {
-            //set result directory in window title (for later orientation)
-           QString title("MIME - " + ui->resultDirLineEdit->text());
-           this->setWindowTitle(title);
-            bool error = false;
+            QApplication::setOverrideCursor(Qt::WaitCursor);
+            MIMEMainWindow::enableSanitySaveButtons(false);
 
-            //try to read reference file, if existing
-            string refFileNative;
-            if(ioTools::fileExists(ui->referenceLineEdit->text().toStdString()))
+            ui->saveProjectPushButton->setEnabled(false);
+            ui->nextStepPushButton->setEnabled(false);
+            if(!ui->referenceLineEdit->text().isEmpty())
             {
-                refFileNative = ioTools::readReference(ui->referenceLineEdit->text().toStdString(), data.ref);
-            } else {
-                error = true;
-                std::string errorMsg = "Load data: \n" + Messages::fileDoesNotExistCritical(ui->referenceLineEdit->text()) + "\n";
-                string resultDir = ui->resultDirLineEdit->text().toStdString();
-                if(ioTools::dirExists(resultDir))
-                    ioTools::writeErrorLog(resultDir, errorMsg);
-            }
-            parameter.refFile = refFileNative;
-            parameter.dataDir = ui->dataDirLineEdit->text().toStdString();
-            if(!error && (ui->cutFrontSpinBox->value() + ui->cutBackSpinBox->value()) >= (int)data.ref.size()) {
-                error = true;
-                QApplication::restoreOverrideCursor();
-                std::string errorMsg = "Load data: \n" + Messages::invalidIntervalCritical() + "\n";
-                string resultDir = ui->resultDirLineEdit->text().toStdString();
-                if(ioTools::dirExists(resultDir))
-                    ioTools::writeErrorLog(resultDir, errorMsg);
+                //set result directory in window title (for later orientation)
+               QString title("MIME - " + ui->resultDirLineEdit->text());
+               this->setWindowTitle(title);
+                bool error = false;
 
-            } else {
-                parameter.cutValueFwd = ui->cutFrontSpinBox->value();
-                parameter.cutValueBwd = ui->cutBackSpinBox->value();
-
-
-                parameter.seqBegin = parameter.cutValueFwd+1;
-                parameter.seqEnd = data.ref.size() - parameter.cutValueBwd;
-
-                //delete possibly already saved data and widgets
-                data.bound.clear();
-                data.unbound.clear();
-            }
-            //at least one pair of data should be available
-            bool dataExisting = false;
-
-            try {
-                for(int row= 0; row<ui->dataTableWidget->rowCount() && !error; ++row)
+                //try to read reference file, if existing
+                string refFileNative;
+                if(ioTools::fileExists(ui->referenceLineEdit->text().toStdString()))
                 {
-                        QLineEdit *nameLine = qobject_cast<QLineEdit *>(ui->dataTableWidget->cellWidget(row, 0));
-                        // name is mandatory
-                        if(nameLine->text().toStdString().empty())
-                            throw MIME_NoNameException();
+                    refFileNative = ioTools::readReference(ui->referenceLineEdit->text().toStdString(), data.ref);
+                } else {
+                    error = true;
+                    std::string errorMsg = "Load data: \n" + Messages::fileDoesNotExistCritical(ui->referenceLineEdit->text()) + "\n";
+                    ioTools::writeErrorLog(parameter.resultDir, errorMsg);
+                }
+                parameter.refFile = refFileNative;
+                parameter.dataDir = ui->dataDirLineEdit->text().toStdString();
+                if(!error && (ui->cutFrontSpinBox->value() + ui->cutBackSpinBox->value()) >= (int)data.ref.size()) {
+                    error = true;
+                    QApplication::restoreOverrideCursor();
+                    std::string errorMsg = "Load data: \n" + Messages::invalidIntervalCritical() + "\n";
+                    ioTools::writeErrorLog(parameter.resultDir, errorMsg);
 
-                        string name = nameLine->text().toStdString();
+                } else {
+                    parameter.cutValueFwd = ui->cutFrontSpinBox->value();
+                    parameter.cutValueBwd = ui->cutBackSpinBox->value();
 
-                        //iterate through cell samples
-                        for(int i = 0; i < ui->dataTableWidget->cellWidget(row, 1)->children().count()  && !error; ++i)
-                        {
-                            QObject *obj = (ui->dataTableWidget->cellWidget(row, 1)->children())[i];
-                            if(obj->metaObject()->className() == DataTableLineEdit::staticMetaObject.className()) {
-                                DataTableLineEdit *tableLineWt = qobject_cast<DataTableLineEdit *>(obj);
-                                DataTableLineEdit *tableLineMut = qobject_cast<DataTableLineEdit *>((ui->dataTableWidget->cellWidget(row, 2)->children())[i]);
-                                if(tableLineWt->text().isEmpty() || tableLineMut->text().isEmpty()) {
-                                    std::string errorMsg = "Load data: \n" + Messages::sampleDataMissingCritical(row+1) + "\n";
-                                    string resultDir = ui->resultDirLineEdit->text().toStdString();
-                                    if(ioTools::dirExists(resultDir))
-                                        ioTools::writeErrorLog(resultDir, errorMsg);
-                                    error = true;
-                                } else if(ui->dataDirLineEdit->text().isEmpty() && (!ioTools::fileExists(tableLineMut->text().toStdString()) || !ioTools::fileExists(tableLineWt->text().toStdString()))) {
-                                    std::string errorMsg = "Load data: \n" + Messages::sampleDataDoesNotExistCritical(row+1) + "\n";
-                                    string resultDir = ui->resultDirLineEdit->text().toStdString();
-                                    if(ioTools::dirExists(resultDir))
-                                        ioTools::writeErrorLog(resultDir, errorMsg);
-                                    error = true;
-                                } else if(ioTools::fileExists(tableLineMut->text().toStdString()) || ioTools::fileExists(tableLineWt->text().toStdString())) {
-                                    //TODO: SAM parsing
-                                    Messages::SAMparsingNotYetProvidedInformation();
-                                    error = true;
-                                } else {
 
-                                    parameter.dataDir = ui->dataDirLineEdit->text().toStdString();
-                                    utils::Sample sampleWt(name, tableLineWt->text().toInt(), tableLineWt->getType(), 0);
-                                    utils::Sample sampleMut(name, tableLineMut->text().toInt(), tableLineMut->getType(),row+1);
-                                    if(tableLineWt->getType() == utils::BOUND) {
-                                        data.bound.insert(sampleWt);
-                                        data.bound.insert(sampleMut);
+                    parameter.seqBegin = parameter.cutValueFwd+1;
+                    parameter.seqEnd = data.ref.size() - parameter.cutValueBwd;
 
-                                    } else if(tableLineWt->getType() == utils::UNBOUND) {
-                                        data.unbound.insert(sampleWt);
-                                        data.unbound.insert(sampleMut);
+                    //delete possibly already saved data and widgets
+                    data.bound.clear();
+                    data.unbound.clear();
+                }
+                //at least one pair of data should be available
+                bool dataExisting = false;
 
+                try {
+                    for(int row= 0; row<ui->dataTableWidget->rowCount() && !error; ++row)
+                    {
+                            QLineEdit *nameLine = qobject_cast<QLineEdit *>(ui->dataTableWidget->cellWidget(row, 0));
+                            // name is mandatory
+                            if(nameLine->text().toStdString().empty())
+                                throw MIME_NoNameException();
+
+                            string name = nameLine->text().toStdString();
+
+                            //iterate through cell samples
+                            for(int i = 0; i < ui->dataTableWidget->cellWidget(row, 1)->children().count()  && !error; ++i)
+                            {
+                                QObject *obj = (ui->dataTableWidget->cellWidget(row, 1)->children())[i];
+                                if(obj->metaObject()->className() == DataTableLineEdit::staticMetaObject.className()) {
+                                    DataTableLineEdit *tableLineWt = qobject_cast<DataTableLineEdit *>(obj);
+                                    DataTableLineEdit *tableLineMut = qobject_cast<DataTableLineEdit *>((ui->dataTableWidget->cellWidget(row, 2)->children())[i]);
+                                    if(tableLineWt->text().isEmpty() || tableLineMut->text().isEmpty()) {
+                                        std::string errorMsg = "Load data: \n" + Messages::sampleDataMissingCritical(row+1) + "\n";
+                                        ioTools::writeErrorLog(parameter.resultDir, errorMsg);
+                                        error = true;
+                                    } else if(ui->dataDirLineEdit->text().isEmpty() && (!ioTools::fileExists(tableLineMut->text().toStdString()) || !ioTools::fileExists(tableLineWt->text().toStdString()))) {
+                                        std::string errorMsg = "Load data: \n" + Messages::sampleDataDoesNotExistCritical(row+1) + "\n";
+                                        ioTools::writeErrorLog(parameter.resultDir, errorMsg);
+                                        error = true;
+                                    } else if(ioTools::fileExists(tableLineMut->text().toStdString()) || ioTools::fileExists(tableLineWt->text().toStdString())) {
+                                        //TODO: SAM parsing
+                                        Messages::SAMparsingNotYetProvidedInformation();
+                                        error = true;
+                                    } else {
+
+                                        parameter.dataDir = ui->dataDirLineEdit->text().toStdString();
+                                        utils::Sample sampleWt(name, tableLineWt->text().toInt(), tableLineWt->getType(), 0);
+                                        utils::Sample sampleMut(name, tableLineMut->text().toInt(), tableLineMut->getType(),row+1);
+                                        if(tableLineWt->getType() == utils::BOUND) {
+                                            data.bound.insert(sampleWt);
+                                            data.bound.insert(sampleMut);
+
+                                        } else if(tableLineWt->getType() == utils::UNBOUND) {
+                                            data.unbound.insert(sampleWt);
+                                            data.unbound.insert(sampleMut);
+
+                                        }
+                                        dataExisting = true;
                                     }
-                                    dataExisting = true;
+
+                                }
+                            }
+                            QCheckBox *sampleCheckBox = qobject_cast<QCheckBox *>(((ui->dataTableWidget->cellWidget(row, 3))->children())[1]);
+                            if(!sampleCheckBox->isChecked())
+                                data.activateSamples(name, false);
+
+                    } //for row
+
+                } //try
+
+                catch(MIME_NoNameException& e)
+                {
+                    QApplication::restoreOverrideCursor();
+                    Messages::unknowException(QString::fromStdString(e.message()));
+                     ioTools::writeErrorLog(parameter.resultDir, "Load data: \n" + e.message());
+                    error = true;
+                }
+                catch(std::exception& e)
+                {
+                    QApplication::restoreOverrideCursor();
+                    std::string errorMsg = "Load data: \n" + Messages::sampleDataIsWrongCritical() + "\n" + e.what() +  "\n";
+                    ioTools::writeErrorLog(parameter.resultDir, errorMsg);
+                    error = true;
+                }
+
+                if(!error) {
+                    if(dataExisting && data.bound.size() == data.unbound.size()) {
+                        string dataDir = ui->dataDirLineEdit->text().toStdString();
+                        string mutRateSamplePlotFile;
+                        try
+                        {
+                            mutRateSamplePlotFile = plot::plotMutationRatePerSampleBoxplot(parameter.resultDir, dataDir, parameter, data, plot::SVG);
+                            if(!mutRateSamplePlotFile.empty()) {
+                                QFile file(QString::fromStdString(mutRateSamplePlotFile));
+                                if (!file.open(QIODevice::ReadOnly)) {
+                                    QApplication::restoreOverrideCursor();
+                                    std::string errorMsg = "Load data: \n" + Messages::plotWentWrongCritical() + "\n";
+                                    ioTools::writeErrorLog(parameter.resultDir, errorMsg);
+                                    return;
                                 }
 
-                            }
-                        }
-                        QCheckBox *sampleCheckBox = qobject_cast<QCheckBox *>(((ui->dataTableWidget->cellWidget(row, 3))->children())[1]);
-                        if(!sampleCheckBox->isChecked())
-                            data.activateSamples(name, false);
+                                file.close();
 
-                } //for row
+                //                QImage image(QString::fromStdString(mutRateSamplePlotFile));
+                                QGraphicsSvgItem *item = new QGraphicsSvgItem(QString::fromStdString(mutRateSamplePlotFile));
+                                QGraphicsScene* scene = new QGraphicsScene();
 
-            } //try
+                //                QGraphicsPixmapItem* item = new QGraphicsPixmapItem(QPixmap::fromImage(image));
+                                 scene->addItem(item);
+                                 clearGraphicsView(ui->sanityGraphicsView);
+                                 ui->sanityGraphicsView->setScene(scene);
+                                  //scaling the svg graphic on the graphicsview size
+                                  ui->sanityGraphicsView->fitInView(item, Qt::KeepAspectRatio);
 
-            catch(MIME_NoNameException& e)
-            {
-                QApplication::restoreOverrideCursor();
-                Messages::unknowException(QString::fromStdString(e.message()));
-                std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-                if(ioTools::dirExists(resultDir))
-                    ioTools::writeErrorLog(resultDir, "Load data: \n" + e.message());
-                error = true;
-            }
-            catch(std::exception& e)
-            {
-                QApplication::restoreOverrideCursor();
-                std::string errorMsg = "Load data: \n" + Messages::sampleDataIsWrongCritical() + "\n" + e.what() +  "\n";
-                std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-                if(ioTools::dirExists(resultDir))
-                    ioTools::writeErrorLog(resultDir, errorMsg);
-                error = true;
-            }
-
-
-
-            if(!error) {
-                if(dataExisting && data.bound.size() == data.unbound.size()) {                    
-
-                    string resultDir = ui->resultDirLineEdit->text().toStdString();
-                    string dataDir = ui->dataDirLineEdit->text().toStdString();
-                    string mutRateSamplePlotFile;
-                    try
-                    {
-                        mutRateSamplePlotFile = plot::plotMutationRatePerSampleBoxplot(resultDir, dataDir, parameter, data, plot::SVG);
-                        if(!mutRateSamplePlotFile.empty()) {
-                            QFile file(QString::fromStdString(mutRateSamplePlotFile));
-                            if (!file.open(QIODevice::ReadOnly)) {
+                                  MIMEMainWindow::enableSanitySaveButtons(true);
+                                  ui->saveProjectPushButton->setEnabled(true);
+                                  MIMEMainWindow::on_saveProjectPushButton_clicked();
+                                  //all needed data is there: we can go to the next step
+                                  ui->nextStepPushButton->setEnabled(true);
+                            } else {
                                 QApplication::restoreOverrideCursor();
                                 std::string errorMsg = "Load data: \n" + Messages::plotWentWrongCritical() + "\n";
                                 ioTools::writeErrorLog(resultDir, errorMsg);
-                                return;
                             }
-
-                            file.close();
-
-            //                QImage image(QString::fromStdString(mutRateSamplePlotFile));
-                            QGraphicsSvgItem *item = new QGraphicsSvgItem(QString::fromStdString(mutRateSamplePlotFile));
-                            QGraphicsScene* scene = new QGraphicsScene();
-
-            //                QGraphicsPixmapItem* item = new QGraphicsPixmapItem(QPixmap::fromImage(image));
-                             scene->addItem(item);
-                             clearGraphicsView(ui->sanityGraphicsView);
-                             ui->sanityGraphicsView->setScene(scene);
-                              //scaling the svg graphic on the graphicsview size
-                              ui->sanityGraphicsView->fitInView(item, Qt::KeepAspectRatio);
-
-                              MIMEMainWindow::enableSanitySaveButtons(true);
-                              ui->saveProjectPushButton->setEnabled(true);
-                              MIMEMainWindow::on_saveProjectPushButton_clicked();
-                              //all needed data is there: we can go to the next step
-                              ui->nextStepPushButton->setEnabled(true);
-                        } else {
-                            QApplication::restoreOverrideCursor();
-                            std::string errorMsg = "Load data: \n" + Messages::plotWentWrongCritical() + "\n";
-                            ioTools::writeErrorLog(resultDir, errorMsg);
                         }
-                    }
-                    catch(MIME_GnuplotNotFoundException& e)
-                    {
+                        catch(MIME_GnuplotNotFoundException& e)
+                        {
+                            QApplication::restoreOverrideCursor();
+                            Messages::unknowException(QString::fromStdString(e.message()));
+                            ioTools::writeErrorLog(parameter.resultDir, "Load data: \n" + e.message());
+                        }
+                        catch(MIME_PathToExecutableNotFoundException& e)
+                        {
+                           QApplication::restoreOverrideCursor();
+                           Messages::unknowException(QString::fromStdString(e.message()));
+                           ioTools::writeErrorLog(parameter.resultDir, "Load data: \n" + e.message());
+                        }
+                        catch(MIME_NoSuchFileException& e)
+                        {
+                            QApplication::restoreOverrideCursor();
+                            std::string errorMsg = "Load data: \n" + Messages::fileDoesNotExistCritical(QString::fromStdString(e.getFilename())) + "\n";
+                            ioTools::writeErrorLog(parameter.resultDir, errorMsg);
+                        }
+                        catch(exception& e)
+                        {
+                            QApplication::restoreOverrideCursor();
+                            Messages::unknowException(QString::fromStdString(e.what()));
+                            ioTools::writeErrorLog(parameter.resultDir, std::string("Load data: \n") + e.what());
+                        }
+                    } else {
                         QApplication::restoreOverrideCursor();
-                        Messages::unknowException(QString::fromStdString(e.message()));
-                        std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-                        if(ioTools::dirExists(resultDir))
-                            ioTools::writeErrorLog(resultDir, "Load data: \n" + e.message());
+                        std::string errorMsg = "Load data: \n" + Messages::notEnoughDataCritical() + "\n";
+                        ioTools::writeErrorLog(parameter.resultDir, errorMsg);
                     }
-                    catch(MIME_PathToExecutableNotFoundException& e)
-                    {
-                       QApplication::restoreOverrideCursor();
-                       Messages::unknowException(QString::fromStdString(e.message()));
-                       std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-                       if(ioTools::dirExists(resultDir))
-                           ioTools::writeErrorLog(resultDir, "Load data: \n" + e.message());
-                    }
-                    catch(MIME_NoSuchFileException& e)
-                    {
-                        QApplication::restoreOverrideCursor();
-                        std::string errorMsg = "Load data: \n" + Messages::fileDoesNotExistCritical(QString::fromStdString(e.getFilename())) + "\n";
-                        ioTools::writeErrorLog(resultDir, errorMsg);
-                    }
-                    catch(exception& e)
-                    {
-                        QApplication::restoreOverrideCursor();
-                        Messages::unknowException(QString::fromStdString(e.what()));
-                        ioTools::writeErrorLog(resultDir, std::string("Load data: \n") + e.what());
-                    }
-                } else {
-                    QApplication::restoreOverrideCursor();                    
-                    std::string errorMsg = "Load data: \n" + Messages::notEnoughDataCritical() + "\n";
-                    std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-                    if(ioTools::dirExists(resultDir))
-                        ioTools::writeErrorLog(resultDir, errorMsg);
                 }
-            }
 
-        } else {
-            QApplication::restoreOverrideCursor();            
-            std::string errorMsg = "Load data: \n" + Messages::refFileMissingCritical() + "\n";
-            std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-            if(ioTools::dirExists(resultDir))
-                ioTools::writeErrorLog(resultDir, errorMsg);
+            } else {
+                QApplication::restoreOverrideCursor();
+                std::string errorMsg = "Load data: \n" + Messages::refFileMissingCritical() + "\n";
+                ioTools::writeErrorLog(parameter.resultDir, errorMsg);
+            }
+            QApplication::restoreOverrideCursor();
         }
-        QApplication::restoreOverrideCursor();
     }
+    else
+        Messages::resultDirDoesNotExistCritical();
 }
 
 void MIMEMainWindow::on_dataDirPushButton_clicked()
@@ -681,113 +667,118 @@ void MIMEMainWindow::on_dataDirPushButton_clicked()
 void MIMEMainWindow::on_loadProjectPushButton_clicked()
 {
     std::cout << "Load Project..." << std::endl;
+    std::string resultDir = ui->resultDirLineEdit->text().toStdString();
+    if(ioTools::dirExists(resultDir))
+    {
+        parameter.resultDir = resultDir;
+        QString fileName = QFileDialog::getOpenFileName(this, Messages::OpenParameterFileText, ui->resultDirLineEdit->text());
 
-    QString fileName = QFileDialog::getOpenFileName(this, Messages::OpenParameterFileText, ui->resultDirLineEdit->text());
 
+        if (!fileName.isEmpty()) {
 
-    if (!fileName.isEmpty()) {
+            QFile file(fileName);
+            if (!file.open(QIODevice::ReadOnly)) {
+                std::string errorMsg = "Load project: \n" + Messages::couldNotOpenFileCritical(fileName) + "\n";
+                ioTools::writeErrorLog(parameter.resultDir, errorMsg);
+                return;
+            }
 
-        QFile file(fileName);
-        if (!file.open(QIODevice::ReadOnly)) {
-            std::string errorMsg = "Load project: \n" + Messages::couldNotOpenFileCritical(fileName) + "\n";
-            std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-            if(ioTools::dirExists(resultDir))
-                ioTools::writeErrorLog(resultDir, errorMsg);
-            return;
-        }
+            file.close();
+            QApplication::setOverrideCursor(Qt::WaitCursor);
+            MIMEMainWindow::enableSanitySaveButtons(false);
+            //read parameter file (which also contains reference and sampleFiles)
 
-        file.close();
-        QApplication::setOverrideCursor(Qt::WaitCursor);
-        MIMEMainWindow::enableSanitySaveButtons(false);
-        //read parameter file (which also contains reference and sampleFiles)
-
-        bool readSuccessful = false;
-        try {
-            readSuccessful = ioTools::readParameterFile(fileName.toStdString(), parameter, data);
-        } catch(std::exception& e)
-        {
-            QApplication::restoreOverrideCursor();
-            std::string errorMsg = "Load project: \n" + Messages::projectFileReadCritical() + "\n" + e.what() + "\n";
-            std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-            if(ioTools::dirExists(resultDir))
-                ioTools::writeErrorLog(resultDir, errorMsg);
-
-        }
-        if(readSuccessful)
-        {
+            bool readSuccessful = false;
             try {
+                readSuccessful = ioTools::readParameterFile(fileName.toStdString(), parameter, data);
+            } catch(std::exception& e)
+            {
+                QApplication::restoreOverrideCursor();
+                std::string errorMsg = "Load project: \n" + Messages::projectFileReadCritical() + "\n" + e.what() + "\n";
+                ioTools::writeErrorLog(parameter.resultDir, errorMsg);
 
-                ui->referenceLineEdit->setText(QString::fromStdString(parameter.refFile));
-                ui->dataDirLineEdit->setText(QString::fromStdString(parameter.dataDir));
-                ui->cutFrontSpinBox->setValue(parameter.cutValueFwd);
-                ui->cutBackSpinBox->setValue(parameter.cutValueBwd);
-                if(!(data.bound.empty() || data.unbound.empty()))
-                {
-                    QTableWidget *table = ui->dataTableWidget;
-                    table->clearContents();
-                    table->setRowCount(0);
-                    int rows = table->rowCount();
-                    QString boundWtSample;
-                    QString unboundWtSample;
-                    for(auto boundIt=data.bound.begin(), unboundIt=data.unbound.begin(); boundIt != data.bound.end(); ++boundIt, ++unboundIt)
+            }
+            if(readSuccessful)
+            {
+                try {
+
+                    ui->referenceLineEdit->setText(QString::fromStdString(parameter.refFile));
+                    ui->dataDirLineEdit->setText(QString::fromStdString(parameter.dataDir));
+                    ui->cutFrontSpinBox->setValue(parameter.cutValueFwd);
+                    ui->cutBackSpinBox->setValue(parameter.cutValueBwd);
+                    if(!(data.bound.empty() || data.unbound.empty()))
                     {
-                        if(boundIt->library == 0) {
-                           rows = this->addNewRow();
-                           QLineEdit *line = qobject_cast<QLineEdit *>(table->cellWidget(rows, 0));
-                           line->setText(QString::fromStdString(boundIt->name));
-                           //should work, as the set of samples is ordered by library
-                           boundWtSample = QString::number(boundIt->barcode);
-                           unboundWtSample = QString::number(unboundIt->barcode);
-                        } else {
-                            for(int i = 0; i < ui->dataTableWidget->cellWidget(rows, 1)->children().count(); ++i) {
-                                QObject *obj = (ui->dataTableWidget->cellWidget(rows, 1)->children())[i];
-                                if(obj->metaObject()->className() == DataTableLineEdit::staticMetaObject.className()) {
-                                    DataTableLineEdit *tableLineWt = qobject_cast<DataTableLineEdit *>(obj);
-                                    DataTableLineEdit *tableLineMut = qobject_cast<DataTableLineEdit *>((ui->dataTableWidget->cellWidget(rows, 2)->children())[i]);
-                                    if(tableLineWt->getType() == utils::BOUND) {
-                                        tableLineWt->setText(boundWtSample);
-                                        tableLineMut->setText(QString::number(boundIt->barcode));
-                                    } else if(tableLineWt->getType() == utils::UNBOUND) {
-                                        tableLineWt->setText(unboundWtSample);
-                                        tableLineMut->setText(QString::number(unboundIt->barcode));
+                        QTableWidget *table = ui->dataTableWidget;
+                        table->clearContents();
+                        table->setRowCount(0);
+                        int rows = table->rowCount();
+                        QString boundWtSample;
+                        QString unboundWtSample;
+                        for(auto boundIt=data.bound.begin(), unboundIt=data.unbound.begin(); boundIt != data.bound.end(); ++boundIt, ++unboundIt)
+                        {
+                            if(boundIt->library == 0) {
+                               rows = this->addNewRow();
+                               QLineEdit *line = qobject_cast<QLineEdit *>(table->cellWidget(rows, 0));
+                               line->setText(QString::fromStdString(boundIt->name));
+                               //should work, as the set of samples is ordered by library
+                               boundWtSample = QString::number(boundIt->barcode);
+                               unboundWtSample = QString::number(unboundIt->barcode);
+                            } else {
+                                for(int i = 0; i < ui->dataTableWidget->cellWidget(rows, 1)->children().count(); ++i) {
+                                    QObject *obj = (ui->dataTableWidget->cellWidget(rows, 1)->children())[i];
+                                    if(obj->metaObject()->className() == DataTableLineEdit::staticMetaObject.className()) {
+                                        DataTableLineEdit *tableLineWt = qobject_cast<DataTableLineEdit *>(obj);
+                                        DataTableLineEdit *tableLineMut = qobject_cast<DataTableLineEdit *>((ui->dataTableWidget->cellWidget(rows, 2)->children())[i]);
+                                        if(tableLineWt->getType() == utils::BOUND) {
+                                            tableLineWt->setText(boundWtSample);
+                                            tableLineMut->setText(QString::number(boundIt->barcode));
+                                        } else if(tableLineWt->getType() == utils::UNBOUND) {
+                                            tableLineWt->setText(unboundWtSample);
+                                            tableLineMut->setText(QString::number(unboundIt->barcode));
+                                        }
                                     }
                                 }
-                            }
 
+                            }
                         }
                     }
+                    this->on_loadDataPushButton_clicked();
                 }
-                this->on_loadDataPushButton_clicked();
-            }
-            catch(MIME_GnuplotNotFoundException& e)
-            {
-                QApplication::restoreOverrideCursor();
-                Messages::unknowException(QString::fromStdString(e.message()));
-                std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-                if(ioTools::dirExists(resultDir))
-                    ioTools::writeErrorLog(resultDir, "Load project: \n" + e.message());
-            }
-            catch(MIME_PathToExecutableNotFoundException& e)
-            {
-               QApplication::restoreOverrideCursor();
-               Messages::unknowException(QString::fromStdString(e.message()));
-               std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-               if(ioTools::dirExists(resultDir))
-                   ioTools::writeErrorLog(resultDir, "Load project: \n" + e.message());
-            }
-            catch(exception& e)
-            {
-                QApplication::restoreOverrideCursor();
-                std::string errorMsg = "Load project: \n" + Messages::sampleDataIsWrongCritical() + "\n" + e.what() + "\n";
-                std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-                if(ioTools::dirExists(resultDir))
-                    ioTools::writeErrorLog(resultDir, errorMsg);
+                catch(MIME_GnuplotNotFoundException& e)
+                {
+                    QApplication::restoreOverrideCursor();
+                    Messages::unknowException(QString::fromStdString(e.message()));
+                    if(ioTools::dirExists(parameter.resultDir))
+                        ioTools::writeErrorLog(parameter.resultDir, "Load project: \n" + e.message());
+                    else
+                        Messages::resultDirDoesNotExistCritical();
+                }
+                catch(MIME_PathToExecutableNotFoundException& e)
+                {
+                   QApplication::restoreOverrideCursor();
+                   Messages::unknowException(QString::fromStdString(e.message()));
+                   if(ioTools::dirExists(parameter.resultDir))
+                        ioTools::writeErrorLog(parameter.resultDir, "Load project: \n" + e.message());
+                   else
+                       Messages::resultDirDoesNotExistCritical();
+                }
+                catch(exception& e)
+                {
+                    QApplication::restoreOverrideCursor();
+                    std::string errorMsg = "Load project: \n" + Messages::sampleDataIsWrongCritical() + "\n" + e.what() + "\n";
+                    if(ioTools::dirExists(parameter.resultDir))
+                        ioTools::writeErrorLog(parameter.resultDir, errorMsg);
+                    else
+                        Messages::resultDirDoesNotExistCritical();
+
+                }
 
             }
-
+            QApplication::restoreOverrideCursor();
         }
-        QApplication::restoreOverrideCursor();
     }
+    else
+        Messages::resultDirDoesNotExistCritical();
 
 }
 
@@ -795,7 +786,6 @@ void MIMEMainWindow::on_loadProjectPushButton_clicked()
 
 void MIMEMainWindow::on_saveSanityPushButton_clicked()
 {
-    string resultDir = ui->resultDirLineEdit->text().toStdString();
     try {
         bool ok;
         QString text = QInputDialog::getText(this, tr("Save plot"), tr("Enter file name suffix for plot of mutation rate:"), QLineEdit::Normal, "", &ok);
@@ -807,9 +797,9 @@ void MIMEMainWindow::on_saveSanityPushButton_clicked()
             MIMEMainWindow::on_saveProjectPushButton_clicked();
             string mutRateSamplePlotFile;
             if(ui->epsSanityCheckBox->isChecked())
-                mutRateSamplePlotFile = plot::plotMutationRatePerSampleBoxplot(resultDir, dataDir, parameter, data, plot::EPS, text.toStdString());
+                mutRateSamplePlotFile = plot::plotMutationRatePerSampleBoxplot(parameter.resultDir, dataDir, parameter, data, plot::EPS, text.toStdString());
             if(ui->pdfSanityCheckBox->isChecked())
-                mutRateSamplePlotFile += "\n" + plot::plotMutationRatePerSampleBoxplot(resultDir, dataDir, parameter, data, plot::PDF, text.toStdString());
+                mutRateSamplePlotFile += "\n" + plot::plotMutationRatePerSampleBoxplot(parameter.resultDir, dataDir, parameter, data, plot::PDF, text.toStdString());
             QApplication::restoreOverrideCursor();
             if(!mutRateSamplePlotFile.empty()) {
                 Messages::filesAreSavedMessage(QString::fromStdString(mutRateSamplePlotFile));
@@ -820,24 +810,29 @@ void MIMEMainWindow::on_saveSanityPushButton_clicked()
     {
         QApplication::restoreOverrideCursor();
         Messages::unknowException(QString::fromStdString(e.message()));
-        std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-        if(ioTools::dirExists(resultDir))
-            ioTools::writeErrorLog(resultDir, "Save bar plot: \n" + e.message());
+        if(ioTools::dirExists(parameter.resultDir))
+            ioTools::writeErrorLog(parameter.resultDir, "Save bar plot: \n" + e.message());
+        else
+            Messages::resultDirDoesNotExistCritical();
     }
     catch(MIME_PathToExecutableNotFoundException& e)
     {
        QApplication::restoreOverrideCursor();
        Messages::unknowException(QString::fromStdString(e.message()));
-       std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-       if(ioTools::dirExists(resultDir))
-           ioTools::writeErrorLog(resultDir, "Save bar plot: \n" + e.message());
+       if(ioTools::dirExists(parameter.resultDir))
+           ioTools::writeErrorLog(parameter.resultDir, "Save bar plot: \n" + e.message());
+       else
+           Messages::resultDirDoesNotExistCritical();
     }
     catch(std::exception& e)
     {
         QApplication::restoreOverrideCursor();
 
         std::string errorMsg = "Save bar plot: \n" + Messages::plotWentWrongCritical() + "\n" + e.what() + "\n";
-        ioTools::writeErrorLog(resultDir, errorMsg);
+        if(ioTools::dirExists(parameter.resultDir))
+            ioTools::writeErrorLog(parameter.resultDir, errorMsg);
+        else
+            Messages::resultDirDoesNotExistCritical();
     }
 }
 
@@ -860,10 +855,9 @@ void MIMEMainWindow::on_estimateErrorPushButton_clicked()
     //if coming from loadError, everything is fine, if from estimate next results (Kds) will be deleted
     QObject* obj = sender();
     int ret = QMessageBox::Ok;
-    std::string resultDir = ui->resultDirLineEdit->text().toStdString();
     //if(obj == ui->estimateErrorPushButton) {
     if(obj == ui->estimateErrorPushButton && (parameter.weightThreshold*100 != ui->weightThrErrorSpinBox->value() || !data.errorExist())) {
-        if(ioTools::errorFilesExist(ui->resultDirLineEdit->text().toStdString()))
+        if(ioTools::dirExists(parameter.resultDir) && ioTools::errorFilesExist(parameter.resultDir))
         {
             ret = Messages::askForDeletingPreviousResults();
         }
@@ -872,8 +866,8 @@ void MIMEMainWindow::on_estimateErrorPushButton_clicked()
 //                if(parameter.weightThreshold != ui->weightThrErrorDoubleSpinBox->value() || !data.errorExist())
 //                {
                 QApplication::setOverrideCursor(Qt::WaitCursor);
-                ioTools::removeErrorFiles(ui->resultDirLineEdit->text().toStdString());
-                ioTools::removeKDFiles(ui->resultDirLineEdit->text().toStdString());
+                ioTools::removeErrorFiles(parameter.resultDir);
+                ioTools::removeKDFiles(parameter.resultDir);
                 parameter.weightThreshold = ui->weightThrErrorSpinBox->value()/100.0;
 
                 try {
@@ -882,14 +876,14 @@ void MIMEMainWindow::on_estimateErrorPushButton_clicked()
                 catch(MIME_NoSuchFileException& e) {
                     QApplication::restoreOverrideCursor();
                     std::string errorMsg = "Estimate error: \n" + Messages::fileDoesNotExistCritical(QString::fromStdString(e.getFilename())) + "\n";
-                    ioTools::writeErrorLog(resultDir, errorMsg);
+                    ioTools::writeErrorLog(parameter.resultDir, errorMsg);
                     ret = QMessageBox::Cancel;
                 }
                 catch(exception& e)
                 {
                     QApplication::restoreOverrideCursor();
                     Messages::unknowException(QString::fromStdString(e.what()));
-                    ioTools::writeErrorLog(resultDir, std::string("Estimate error: \n") + e.what());
+                    ioTools::writeErrorLog(parameter.resultDir, std::string("Estimate error: \n") + e.what());
                     ret = QMessageBox::Cancel;
                 }
         }
@@ -903,7 +897,7 @@ void MIMEMainWindow::on_estimateErrorPushButton_clicked()
         try{
             //QApplication::setOverrideCursor(Qt::WaitCursor);
             //plot median error for bound and unbound
-            string errorEstimationPlotFile = plot::plotMedianErrorPerSample(ui->resultDirLineEdit->text().toStdString(), parameter, data, plot::SVG);
+            string errorEstimationPlotFile = plot::plotMedianErrorPerSample(parameter.resultDir, parameter, data, plot::SVG);
             if(!errorEstimationPlotFile.empty()) {
                 QGraphicsSvgItem *item = new QGraphicsSvgItem(QString::fromStdString(errorEstimationPlotFile));
                 QGraphicsScene* scene = new QGraphicsScene();
@@ -919,7 +913,7 @@ void MIMEMainWindow::on_estimateErrorPushButton_clicked()
             }
 
             //plot coefficient of variation
-            string errorCoeffVarPlotFile = plot::plotCoefficientOfVariation(ui->resultDirLineEdit->text().toStdString(), parameter, data, plot::SVG);
+            string errorCoeffVarPlotFile = plot::plotCoefficientOfVariation(parameter.resultDir, parameter, data, plot::SVG);
             //trick, to get a full sized plot on the second tab and not only a thumbnail
             int currIdx = ui->errorTabWidget->currentIndex();
             ui->errorTabWidget->setCurrentIndex(1);
@@ -935,7 +929,7 @@ void MIMEMainWindow::on_estimateErrorPushButton_clicked()
             } else {
                 QApplication::restoreOverrideCursor();
                 std::string errorMsg = "Estimate error: \n" + Messages::plotWentWrongCritical() + "\n";
-                ioTools::writeErrorLog(ui->resultDirLineEdit->text().toStdString(), errorMsg);
+                ioTools::writeErrorLog(parameter.resultDir, errorMsg);
             }
             ui->errorTabWidget->setCurrentIndex(currIdx);
             MIMEMainWindow::enableErrorSaveButtons(!errorCoeffVarPlotFile.empty() && !errorEstimationPlotFile.empty());
@@ -945,23 +939,22 @@ void MIMEMainWindow::on_estimateErrorPushButton_clicked()
         {
             QApplication::restoreOverrideCursor();
             Messages::unknowException(QString::fromStdString(e.message()));
-            std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-            if(ioTools::dirExists(resultDir))
-                ioTools::writeErrorLog(resultDir, "Estimate error: \n" + e.message());
+            if(ioTools::dirExists(parameter.resultDir))
+                ioTools::writeErrorLog(parameter.resultDir, "Estimate error: \n" + e.message());
         }
         catch(MIME_PathToExecutableNotFoundException& e)
         {
            QApplication::restoreOverrideCursor();
            Messages::unknowException(QString::fromStdString(e.message()));
-           std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-           if(ioTools::dirExists(resultDir))
-               ioTools::writeErrorLog(resultDir, "Estimate error: \n" + e.message());
+           if(ioTools::dirExists(parameter.resultDir))
+               ioTools::writeErrorLog(parameter.resultDir, "Estimate error: \n" + e.message());
         }
         catch(std::exception& e)
         {
             QApplication::restoreOverrideCursor();
             std::string errorMsg = "Estimate error: \n" + Messages::plotWentWrongCritical() + "\n" + e.what() + "\n";
-            ioTools::writeErrorLog(ui->resultDirLineEdit->text().toStdString(), errorMsg);
+            if(ioTools::dirExists(parameter.resultDir))
+                ioTools::writeErrorLog(parameter.resultDir, errorMsg);
         }
     }
 
@@ -974,7 +967,7 @@ void MIMEMainWindow::on_loadErrorPushButton_clicked()
 {
     try {
         QApplication::setOverrideCursor(Qt::WaitCursor);
-        ioTools::readErrorEstimates(ui->resultDirLineEdit->text().toStdString(), data);
+        ioTools::readErrorEstimates(parameter.resultDir, data);
         QApplication::restoreOverrideCursor();
         this->on_estimateErrorPushButton_clicked();
     }
@@ -982,7 +975,7 @@ void MIMEMainWindow::on_loadErrorPushButton_clicked()
     {
         QApplication::restoreOverrideCursor();
         std::string errorMsg = "Load error: \n" + Messages::readingWentWrongCritical() + "\n" + e.what() + "\n";
-        ioTools::writeErrorLog(ui->resultDirLineEdit->text().toStdString(), errorMsg);
+        ioTools::writeErrorLog(parameter.resultDir, errorMsg);
 
     }
 }
@@ -995,16 +988,15 @@ void MIMEMainWindow::on_saveErrorPlotPushButton_clicked()
         QString text = QInputDialog::getText(this, tr("Save error values and plot"), tr("Enter file name prefix for plot:"), QLineEdit::Normal, "", &ok);
         if(ok) {
             QApplication::setOverrideCursor(Qt::WaitCursor);
-            string resultDir = ui->resultDirLineEdit->text().toStdString();
             string errorRateSamplePlotFile;
             string errorCoeffVarPlotFile;
             if(ui->epsErrorCheckBox->isChecked()) {
-                errorRateSamplePlotFile = plot::plotMedianErrorPerSample(resultDir, parameter, data, plot::EPS, text.toStdString());
-                errorCoeffVarPlotFile = plot::plotCoefficientOfVariation(resultDir, parameter, data, plot::EPS, text.toStdString());
+                errorRateSamplePlotFile = plot::plotMedianErrorPerSample(parameter.resultDir, parameter, data, plot::EPS, text.toStdString());
+                errorCoeffVarPlotFile = plot::plotCoefficientOfVariation(parameter.resultDir, parameter, data, plot::EPS, text.toStdString());
             }
             if(ui->pdfErrorCheckBox->isChecked()) {
-                errorRateSamplePlotFile += "\n"+plot::plotMedianErrorPerSample(resultDir, parameter, data, plot::PDF, text.toStdString());
-                errorCoeffVarPlotFile += "\n" + plot::plotCoefficientOfVariation(resultDir, parameter, data, plot::PDF, text.toStdString());
+                errorRateSamplePlotFile += "\n"+plot::plotMedianErrorPerSample(parameter.resultDir, parameter, data, plot::PDF, text.toStdString());
+                errorCoeffVarPlotFile += "\n" + plot::plotCoefficientOfVariation(parameter.resultDir, parameter, data, plot::PDF, text.toStdString());
             }
             QApplication::restoreOverrideCursor();
             if(!errorRateSamplePlotFile.empty() && !errorCoeffVarPlotFile.empty())
@@ -1016,23 +1008,21 @@ void MIMEMainWindow::on_saveErrorPlotPushButton_clicked()
     {
         QApplication::restoreOverrideCursor();
         Messages::unknowException(QString::fromStdString(e.message()));
-        std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-        if(ioTools::dirExists(resultDir))
-            ioTools::writeErrorLog(resultDir, "Save error plot: \n" + e.message());
+        if(ioTools::dirExists(parameter.resultDir))
+            ioTools::writeErrorLog(parameter.resultDir, "Save error plot: \n" + e.message());
     }
     catch(MIME_PathToExecutableNotFoundException& e)
     {
        QApplication::restoreOverrideCursor();
        Messages::unknowException(QString::fromStdString(e.message()));
-       std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-       if(ioTools::dirExists(resultDir))
-           ioTools::writeErrorLog(resultDir, "Save error plot: \n" + e.message());
+       if(ioTools::dirExists(parameter.resultDir))
+           ioTools::writeErrorLog(parameter.resultDir, "Save error plot: \n" + e.message());
     }
     catch(std::exception& e)
     {
         QApplication::restoreOverrideCursor();
         std::string errorMsg = "Save error plot: \n" + Messages::plotWentWrongCritical() + "\n" + e.what() + "\n";
-        ioTools::writeErrorLog(ui->resultDirLineEdit->text().toStdString(), errorMsg);
+        ioTools::writeErrorLog(parameter.resultDir, errorMsg);
     }
 }
 
@@ -1041,11 +1031,10 @@ void MIMEMainWindow::on_saveErrorPlotPushButton_clicked()
 void MIMEMainWindow::on_saveErrorsPushButton_clicked()
 {
     try {
-        string resultDir = ui->resultDirLineEdit->text().toStdString();
-        if(ioTools::dirExists(resultDir)) {
+        if(ioTools::dirExists(parameter.resultDir)) {
             QApplication::setOverrideCursor(Qt::WaitCursor);
             MIMEMainWindow::on_saveProjectPushButton_clicked();
-            ioTools::writeErrorEstimates(resultDir, data);
+            ioTools::writeErrorEstimates(parameter.resultDir, data);
             QApplication::restoreOverrideCursor();
             //Messages::filesAreSavedMessage();
         }
@@ -1054,7 +1043,7 @@ void MIMEMainWindow::on_saveErrorsPushButton_clicked()
     {
         QApplication::restoreOverrideCursor();
         std::string errorMsg = "Save error: \n" + Messages::savingWentWrongCritical() + "\n" + e.what() + "\n";
-        ioTools::writeErrorLog(ui->resultDirLineEdit->text().toStdString(), errorMsg);
+        ioTools::writeErrorLog(parameter.resultDir, errorMsg);
     }
 }
 
@@ -1096,8 +1085,8 @@ void MIMEMainWindow::on_computeRawKDValuesPushButton_clicked()
     catch(exception& e)
     {
         QApplication::restoreOverrideCursor();
-        std::string errorMsg = "Compute raw KDs: \n" + Messages::ErrorDuringRawKdValuesCritical() + "\n" + e.what() + "\n";
-        ioTools::writeErrorLog(ui->resultDirLineEdit->text().toStdString(), errorMsg);
+        std::string errorMsg = "Compute raw KDs: \n" + Messages::errorDuringRawKdValuesCritical() + "\n" + e.what() + "\n";
+        ioTools::writeErrorLog(parameter.resultDir, errorMsg);
     }
 
     QApplication::restoreOverrideCursor();
@@ -1129,34 +1118,32 @@ void MIMEMainWindow::on_qualityCriteriaPushButton_clicked()
         if(ui->KDyAxisFromDoubleSpinBox->value() < ui->KDyAxisToDoubleSpinBox->value())
         {
             try {
-                allEffectsPlotFile = plot::plotAllEffects(ui->resultDirLineEdit->text().toStdString(), parameter, data, plot::SVG);
+                allEffectsPlotFile = plot::plotAllEffects(parameter.resultDir, parameter, data, plot::SVG);
             }
             catch(MIME_GnuplotNotFoundException& e)
             {
                 QApplication::restoreOverrideCursor();
                 Messages::unknowException(QString::fromStdString(e.message()));
-                std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-                if(ioTools::dirExists(resultDir))
-                    ioTools::writeErrorLog(resultDir, "Apply quality criteria: \n" + e.message());
+                if(ioTools::dirExists(parameter.resultDir))
+                    ioTools::writeErrorLog(parameter.resultDir, "Apply quality criteria: \n" + e.message());
             }
             catch(MIME_PathToExecutableNotFoundException& e)
             {
                QApplication::restoreOverrideCursor();
                Messages::unknowException(QString::fromStdString(e.message()));
-               std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-               if(ioTools::dirExists(resultDir))
-                   ioTools::writeErrorLog(resultDir, "Apply quality criteria: \n" + e.message());
+               if(ioTools::dirExists(parameter.resultDir))
+                   ioTools::writeErrorLog(parameter.resultDir, "Apply quality criteria: \n" + e.message());
             }
             catch(std::exception& e)
             {
                 QApplication::restoreOverrideCursor();
                 std::string errorMsg = "Apply quality criteria: \n" + Messages::plotWentWrongCritical() + "\n" + e.what() + "\n";
-                ioTools::writeErrorLog(ui->resultDirLineEdit->text().toStdString(), errorMsg);
+                ioTools::writeErrorLog(parameter.resultDir, errorMsg);
             }
         } else {
            QApplication::restoreOverrideCursor();
            std::string errorMsg = "Apply quality criteria: \n" + Messages::invalidIntervalCritical() + "\n";
-           ioTools::writeErrorLog(ui->resultDirLineEdit->text().toStdString(), errorMsg);
+           ioTools::writeErrorLog(parameter.resultDir, errorMsg);
         }
         if(!allEffectsPlotFile.empty()) {
             QGraphicsSvgItem *item = new QGraphicsSvgItem(QString::fromStdString(allEffectsPlotFile));
@@ -1169,14 +1156,14 @@ void MIMEMainWindow::on_qualityCriteriaPushButton_clicked()
         }else {
             QApplication::restoreOverrideCursor();
             std::string errorMsg = "Apply quality criteria: \n" + Messages::plotWentWrongCritical() + "\n";
-            ioTools::writeErrorLog(ui->resultDirLineEdit->text().toStdString(), errorMsg);
+            ioTools::writeErrorLog(parameter.resultDir, errorMsg);
         }
     }
     catch(exception& e)
     {
         QApplication::restoreOverrideCursor();
         std::string errorMsg = "Apply quality criteria: \n" + Messages::errorDuringQualityCriteriaApplication() + "\n" + e.what() + "\n";
-        ioTools::writeErrorLog(ui->resultDirLineEdit->text().toStdString(), errorMsg);
+        ioTools::writeErrorLog(parameter.resultDir, errorMsg);
     }
     QApplication::restoreOverrideCursor();
 
@@ -1188,7 +1175,7 @@ void MIMEMainWindow::on_loadRawKDValuesPushButton_clicked()
     try {
         QApplication::setOverrideCursor(Qt::WaitCursor);
         MIMEMainWindow::enableParameter(false);
-        ioTools::readRawKDCriteria(ui->resultDirLineEdit->text().toStdString(), data, "rawKdValues.csv");
+        ioTools::readRawKDCriteria(parameter.resultDir, data, "rawKdValues.csv");
         QApplication::restoreOverrideCursor();
         MIMEMainWindow::enableParameter(true);
         //ui->saveRawKDvaluesPushButton->setEnabled(true);
@@ -1196,7 +1183,7 @@ void MIMEMainWindow::on_loadRawKDValuesPushButton_clicked()
     catch(MIME_NoSuchFileException& e) {
         QApplication::restoreOverrideCursor();
         std::string errorMsg = "Load raw Kds: \n" + Messages::fileDoesNotExistCritical(QString::fromStdString(e.getFilename())) + "\n";
-        ioTools::writeErrorLog(ui->resultDirLineEdit->text().toStdString(), errorMsg);
+        ioTools::writeErrorLog(parameter.resultDir, errorMsg);
     }
 
 }
@@ -1206,11 +1193,10 @@ void MIMEMainWindow::on_saveRawKDvaluesPushButton_clicked()
 {
     try
     {
-        string resultDir = ui->resultDirLineEdit->text().toStdString();
-        if(ioTools::dirExists(resultDir)) {
+        if(ioTools::dirExists(parameter.resultDir)) {
             QApplication::setOverrideCursor(Qt::WaitCursor);
             MIMEMainWindow::on_saveProjectPushButton_clicked();
-            ioTools::writeRawKDCriteria(ui->resultDirLineEdit->text().toStdString(), data, "rawKdValues.csv");
+            ioTools::writeRawKDCriteria(parameter.resultDir, data, "rawKdValues.csv");
             QApplication::restoreOverrideCursor();
             //Messages::filesAreSavedMessage();
 
@@ -1220,7 +1206,7 @@ void MIMEMainWindow::on_saveRawKDvaluesPushButton_clicked()
     {
         QApplication::restoreOverrideCursor();
         std::string errorMsg = "Save raw Kds: \n" + Messages::savingWentWrongCritical()+ "\n" + e.what() + "\n";
-        ioTools::writeErrorLog(ui->resultDirLineEdit->text().toStdString(), errorMsg);
+        ioTools::writeErrorLog(parameter.resultDir, errorMsg);
     }
 }
 
@@ -1231,13 +1217,12 @@ void MIMEMainWindow::on_saveKDResultsPushButton_clicked()
     QString text = QInputDialog::getText(this, tr("Save Kd results"), tr("Enter file name suffix for the result table:"), QLineEdit::Normal, "", &ok);
     if(ok) {
         QApplication::setOverrideCursor(Qt::WaitCursor);
-        std::string resultDir = ui->resultDirLineEdit->text().toStdString();
         MIMEMainWindow::on_saveProjectPushButton_clicked();
         std::string filename;
         try
         {
-           filename = ioTools::writePositionWiseKDEstimates(resultDir, data, text.toStdString());
-           filename += "\n"+ioTools::writePositionWiseMaxKD(resultDir, data, text.toStdString());
+           filename = ioTools::writePositionWiseKDEstimates(parameter.resultDir, data, text.toStdString());
+           filename += "\n"+ioTools::writePositionWiseMaxKD(parameter.resultDir, data, text.toStdString());
             if(!filename.empty())
                 Messages::filesAreSavedMessage(QString::fromStdString(filename));
         }
@@ -1245,7 +1230,7 @@ void MIMEMainWindow::on_saveKDResultsPushButton_clicked()
         {
             QApplication::restoreOverrideCursor();
             std::string errorMsg = "Save Kd results: \n" + Messages::savingWentWrongCritical()+ "\n" + e.what() + "\n";
-            ioTools::writeErrorLog(ui->resultDirLineEdit->text().toStdString(), errorMsg);
+            ioTools::writeErrorLog(parameter.resultDir, errorMsg);
         }
 
         QApplication::restoreOverrideCursor();
@@ -1267,31 +1252,29 @@ void MIMEMainWindow::on_saveKDImagewithCriteriaPushButton_clicked()
             QApplication::setOverrideCursor(Qt::WaitCursor);
             try{
                 if(ui->epsKdCheckBox->isChecked())
-                    plot::plotAllEffects(ui->resultDirLineEdit->text().toStdString(), parameter, data, plot::EPS, text.toStdString());
+                    plot::plotAllEffects(parameter.resultDir, parameter, data, plot::EPS, text.toStdString());
                 if(ui->pdfKdCheckBox->isChecked())
-                    plot::plotAllEffects(ui->resultDirLineEdit->text().toStdString(), parameter, data, plot::PDF, text.toStdString());
+                    plot::plotAllEffects(parameter.resultDir, parameter, data, plot::PDF, text.toStdString());
             }
             catch(MIME_GnuplotNotFoundException& e)
             {
                 QApplication::restoreOverrideCursor();
                 Messages::unknowException(QString::fromStdString(e.message()));
-                std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-                if(ioTools::dirExists(resultDir))
-                    ioTools::writeErrorLog(resultDir, "Save Kd plot: \n" + e.message());
+                if(ioTools::dirExists(parameter.resultDir))
+                    ioTools::writeErrorLog(parameter.resultDir, "Save Kd plot: \n" + e.message());
             }
             catch(MIME_PathToExecutableNotFoundException& e)
             {
                QApplication::restoreOverrideCursor();
                Messages::unknowException(QString::fromStdString(e.message()));
-               std::string resultDir = ui->resultDirLineEdit->text().toStdString();
-               if(ioTools::dirExists(resultDir))
-                   ioTools::writeErrorLog(resultDir, "Save Kd plot: \n" + e.message());
+               if(ioTools::dirExists(parameter.resultDir))
+                   ioTools::writeErrorLog(parameter.resultDir, "Save Kd plot: \n" + e.message());
             }
             catch(std::exception& e)
             {
                 QApplication::restoreOverrideCursor();                
                 std::string errorMsg = "Save Kd plot: \n" + Messages::plotWentWrongCritical() + "\n" + e.what() + "\n";
-                ioTools::writeErrorLog(ui->resultDirLineEdit->text().toStdString(), errorMsg);
+                ioTools::writeErrorLog(parameter.resultDir, errorMsg);
             }
 
             QApplication::restoreOverrideCursor();
@@ -1300,6 +1283,6 @@ void MIMEMainWindow::on_saveKDImagewithCriteriaPushButton_clicked()
 
     } else {
         std::string errorMsg = "Save Kd plot: \n" + Messages::invalidIntervalCritical() + "\n";
-        ioTools::writeErrorLog(ui->resultDirLineEdit->text().toStdString(), errorMsg);
+        ioTools::writeErrorLog(parameter.resultDir, errorMsg);
     }
 }

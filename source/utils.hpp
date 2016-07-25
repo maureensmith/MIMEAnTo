@@ -360,6 +360,7 @@ namespace utils {
 
 		std::string refFile;
         std::string dataDir;
+        std::string resultDir;
 
 	};
 	
