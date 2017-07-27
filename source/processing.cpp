@@ -632,7 +632,8 @@ namespace processing {
                                         ++data.numberOfKDs[pos1][mut];
                                         if(KDvalue_log2 >= 0) {
                                             ++numberOfKDs_greaterZero[pos1][mut];
-                                        } else if(KDvalue_log2 <= 0) {
+                                        }
+                                        if(KDvalue_log2 <= 0) {
                                             ++numberOfKDs_smallerZero[pos1][mut];
                                         }
                                     }
@@ -659,7 +660,8 @@ namespace processing {
 
                                         if(KDvalue_log2 >= 0) {
                                             ++numberOfKDs_greaterZero[pos1][mut];
-                                        } else if(KDvalue_log2 <= 0) {
+                                        }
+                                        if(KDvalue_log2 <= 0) {
                                             ++numberOfKDs_smallerZero[pos1][mut];
                                         }
                                     }

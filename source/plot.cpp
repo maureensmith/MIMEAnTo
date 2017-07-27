@@ -660,6 +660,9 @@ namespace plot {
 		std::vector<std::vector<double>> perc5(3);
 		std::vector<std::vector<double>> perc75(3);
 		std::vector<std::vector<double>> perc25(3);
+
+        std::vector<std::vector<double>> minIQR(3);
+        std::vector<std::vector<double>> maxIQR(3);
 		
 		std::vector<std::vector<int>> colors(3);
 		
@@ -681,16 +684,16 @@ namespace plot {
 		std::vector<double> perc75Max;
 		std::vector<double> perc25Max;
 		std::vector<int> actPositionsMax;
+        std::vector<int> actPositions;
 		std::vector<boost::tuple<int,double, int>> pValuesMaxEff;
 		
 		int minY = 0;
 		int maxY = 0;
 		int minYMaxEff = 0;
 		int maxYMaxEff = 0;
-		
+
         int begin = max(param.plotStartRegion, param.seqBegin);
         int end = min(param.plotEndRegion, param.seqEnd);
-
         double yFrom = param.plotYAxisFrom;
         double yTo = param.plotYAxisTo;
 
@@ -757,6 +760,7 @@ namespace plot {
             //only plot valid positions (filtered during processing)
             if(maxIt != data.maxMut.end())
             {
+                actPositions.push_back(pos);
 				for(int mut=0; mut < 3; ++mut) {
 					double p95;
 					double p5;
@@ -778,6 +782,9 @@ namespace plot {
 						perc75[mut].push_back(log2(utils::getPercentile(data.totalRelKD_perPos[pos][mut], 75)));
 						perc25[mut].push_back(log2(utils::getPercentile(data.totalRelKD_perPos[pos][mut], 25)));
 					}
+                    std::pair<double, double> iqr = utils::getxIQR(data.totalRelKD_perPos[pos][mut]);
+                    minIQR[mut].push_back(log2(iqr.first));
+                    maxIQR[mut].push_back(log2(iqr.second));
 					
 					if(pos >= begin && pos <= end) {
                         if(p95 > maxY)
@@ -932,12 +939,12 @@ namespace plot {
         *gp << "'-' using 1:(" << yFrom-yRef-yRef*0.3 << "):('*'):2 with labels notitle center tc palette font '"<< font <<"', ";
         *gp << "'-' using ($1+0.2):(" << yFrom-yRef-yRef*0.3 << "):('*'):2 with labels notitle center tc palette font '"<< font <<"'\n";
 		// x boxmin whiskermin whiskermax boxmax
-		(*gp).send1d(boost::make_tuple(data.positions, perc25[0], perc5[0], perc95[0], perc75[0], colors[0]));
-		(*gp).send1d(std::make_pair(data.positions,medians[0]));
-		(*gp).send1d(boost::make_tuple(data.positions, perc25[1], perc5[1], perc95[1], perc75[1], colors[1]));
-		(*gp).send1d(std::make_pair(data.positions,medians[1]));
-		(*gp).send1d(boost::make_tuple(data.positions, perc25[2], perc5[2], perc95[2], perc75[2], colors[2]));
-		(*gp).send1d(std::make_pair(data.positions,medians[2]));
+        (*gp).send1d(boost::make_tuple(actPositions, perc25[0], minIQR[0], maxIQR[0], perc75[0], colors[0]));
+        (*gp).send1d(std::make_pair(actPositions,medians[0]));
+        (*gp).send1d(boost::make_tuple(actPositions, perc25[1], minIQR[1], maxIQR[1], perc75[1], colors[1]));
+        (*gp).send1d(std::make_pair(actPositions,medians[1]));
+       (*gp).send1d(boost::make_tuple(actPositions, perc25[2], minIQR[2], maxIQR[2], perc75[2], colors[2]));
+        (*gp).send1d(std::make_pair(actPositions,medians[2]));
 // 		gp.send1d(std::make_pair(data.positions, nullLine));
 // 		gp.send1d(std::make_pair(data.positions, refStr));
 		(*gp).send1d(nullLine);

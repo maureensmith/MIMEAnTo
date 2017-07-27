@@ -59,8 +59,8 @@ void MIMEMainWindow::closeEvent(QCloseEvent *event) {
     int ret = Messages::exitApplicationWarning();
     if(ret == QMessageBox::Ok) {
         on_saveProjectPushButton_clicked();
-//        if(ioTools::dirExists(ui->resultDirLineEdit->text().toStdString()))
-//            ioTools::removeTmpFiles(ui->resultDirLineEdit->text().toStdString());
+        if(ioTools::dirExists(ui->resultDirLineEdit->text().toStdString()))
+            ioTools::removeTmpFiles(ui->resultDirLineEdit->text().toStdString());
         event->accept();
     } else {
         event->ignore();
@@ -305,11 +305,11 @@ void MIMEMainWindow::initKDComputationPage() {
     enableKdSaveButtons(false);
     //use start and end of sequence as default values (maybe later the interval which is seen on screen?)
     ui->saveKDImageFromSpinBox->setValue(parameter.seqBegin);
-    ui->saveKDImageFromSpinBox->setMinimum(parameter.seqBegin);
-    ui->saveKDImageFromSpinBox->setMaximum(parameter.seqEnd);
+    //ui->saveKDImageFromSpinBox->setMinimum(parameter.seqBegin);
+    //ui->saveKDImageFromSpinBox->setMaximum(parameter.seqEnd);
     ui->saveKDImageToSpinBox->setValue(parameter.seqEnd);
-    ui->saveKDImageToSpinBox->setMinimum(parameter.seqBegin);
-    ui->saveKDImageToSpinBox->setMaximum(parameter.seqEnd);
+    //ui->saveKDImageToSpinBox->setMinimum(parameter.seqBegin);
+    //ui->saveKDImageToSpinBox->setMaximum(parameter.seqEnd);
     //enable button to load data if raw KD value file exist in reslut directory
     ui->loadRawKDValuesPushButton->setEnabled(ioTools::dirExists(parameter.resultDir) && ioTools::kDFileExists(parameter.resultDir));
 
@@ -1223,6 +1223,7 @@ void MIMEMainWindow::on_saveKDResultsPushButton_clicked()
         {
            filename = ioTools::writePositionWiseKDEstimates(parameter.resultDir, data, text.toStdString());
            filename += "\n"+ioTools::writePositionWiseMaxKD(parameter.resultDir, data, text.toStdString());
+           QApplication::restoreOverrideCursor();
             if(!filename.empty())
                 Messages::filesAreSavedMessage(QString::fromStdString(filename));
         }
@@ -1232,14 +1233,15 @@ void MIMEMainWindow::on_saveKDResultsPushButton_clicked()
             std::string errorMsg = "Save Kd results: \n" + Messages::savingWentWrongCritical()+ "\n" + e.what() + "\n";
             ioTools::writeErrorLog(parameter.resultDir, errorMsg);
         }
-
-        QApplication::restoreOverrideCursor();
     }
 }
 
 void MIMEMainWindow::on_saveKDImagewithCriteriaPushButton_clicked()
 {
     if(ui->saveKDImageFromSpinBox->value() <= ui->saveKDImageToSpinBox->value() && ui->KDyAxisFromDoubleSpinBox->value() < ui->KDyAxisToDoubleSpinBox->value()) {
+        // if positions are chosen out of the interval: take start und end of sequnce
+        ui->saveKDImageFromSpinBox->setValue(max(ui->saveKDImageFromSpinBox->value(), parameter.seqBegin));
+        ui->saveKDImageToSpinBox->setValue(min(ui->saveKDImageToSpinBox->value(), parameter.seqEnd));
         parameter.plotStartRegion = ui->saveKDImageFromSpinBox->value();
         parameter.plotEndRegion = ui->saveKDImageToSpinBox->value();
         parameter.plotPValues = ui->plotPValuesCheckBox->isChecked();

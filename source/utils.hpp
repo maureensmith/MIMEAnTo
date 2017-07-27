@@ -552,6 +552,8 @@ namespace utils {
 	
 // 	template <typename T>
 	double getPercentile(std::vector<double>& values, int percentile);
+
+    std::pair<double, double> getxIQR(std::vector<double>& values);
 	
 // 	template <typename T>
 	std::vector<size_t> sort_indexes(std::vector<double>& v);

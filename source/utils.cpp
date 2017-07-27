@@ -87,6 +87,32 @@ namespace utils {
 			res = getPercentile(sortedValues, percentile);
 		return res;
 	}
+
+    // for whiskers of the boxplot/ candele stick, instead of 5/95 percentile take 1.5 x +-IQR
+    std::pair<double, double> getxIQR(std::vector<double>& values) {
+        std::multiset<double> sortedValues;
+        for(double entry : values) {
+            if(entry > 0)
+                sortedValues.insert(entry);
+        }
+        double minVal = std::numeric_limits<double>::quiet_NaN();
+        double maxVal = std::numeric_limits<double>::quiet_NaN();
+
+        if(sortedValues.size() > 0) {
+            double q1 = getPercentile(sortedValues, 25);
+            double q3 = getPercentile(sortedValues, 75);
+            double iqr = q3-q1;
+            //Returns an iterator pointing to the first element in the range [first,last) which does not compare less than val
+            minVal = *(std::lower_bound(sortedValues.begin(), sortedValues.end(), q1-(1.5*iqr)));
+            //Returns an iterator pointing to the first element in the range [first,last) which compares greater than val
+            auto maxValItr = std::upper_bound(sortedValues.begin(), sortedValues.end(), q3+(1.5*iqr));
+            if(maxValItr!=sortedValues.begin())
+                maxValItr--;
+            maxVal = *maxValItr;
+        }
+
+        return std::make_pair(minVal, maxVal);
+    }
 	
 	
     //not possible to check for <= because of strict weak ordering

@@ -519,8 +519,10 @@ namespace ioTools {
             outfile << "\tmedian mut C\tp-values mut C\t#resamplings mut C\t#lower estimates mut C\t#upper estimates mut C\t5. percentil mut C\t95. percentil mut C";
             outfile << "\tmedian mut G\tp-values mut G\t#resamplings mut G\t#lower estimates mut G\t#upper estimates mut G\t5. percentil mut G\t95. percentil mut G";
             outfile << "\tmedian mut U\tp-values mut U\t#resamplings mut U\t#lower estimates mut U\t#upper estimates mut U\t5. percentil mut U\t95. percentil mut U" << std::endl;
-			for(auto posIt = data.totalRelKD_perPos.begin(); posIt != data.totalRelKD_perPos.end(); ++posIt) {
-				int pos1 = posIt->first;
+            //for(auto posIt = data.totalRelKD_perPos.begin(); posIt != data.totalRelKD_perPos.end(); ++posIt) {
+            for(auto posIt = data.positions.begin(); posIt != data.positions.end(); ++posIt) {
+                int pos1 = *posIt;
+                //int pos1 = posIt->first;
 				int wtBase1 = data.ref[pos1];
 				outfile << pos1 << "\t" << wtBase1 << "\t" << data.maxMut[pos1];
 
