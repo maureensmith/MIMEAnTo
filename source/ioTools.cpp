@@ -308,19 +308,23 @@ namespace ioTools {
         printMapOfVector(data.medianExpKappaUnbound_perBase, "errorEstimatesPerBaseNonselected.csv", errorDir);
 //        printMapOfDouble(data.medianExpKappa_Total, "errorEstimatesTotal.csv", resultDir);
 //        std::map<int, std::map<int, double>> medianExpKappaTotal_perSampleSelected;
-        for(auto sampleBoundIt = data.medianExpKappaTotal_perSampleBound.begin(), sampleUnboundIt = data.medianExpKappaTotal_perSampleUnbound.begin(); sampleBoundIt!=data.medianExpKappaTotal_perSampleBound.end(); ++sampleBoundIt, ++sampleUnboundIt) {
-            int boundBarcode = sampleBoundIt->first;
+
+        for(auto sampleUnboundIt = data.medianExpKappaTotal_perSampleUnbound.begin(); sampleUnboundIt!=data.medianExpKappaTotal_perSampleUnbound.end(); ++sampleUnboundIt) {
             int unboundBarcode = sampleUnboundIt->first;
-            printMapOfDouble(data.medianExpKappaTotal_perSampleBound[boundBarcode], "errorEstimatesTotal_selectedSample"+std::to_string(boundBarcode)+".csv", errorDir);
             printMapOfDouble(data.medianExpKappaTotal_perSampleUnbound[unboundBarcode], "errorEstimatesTotal_nonselectedSample"+std::to_string(unboundBarcode)+".csv", errorDir);
-            printMapOfVector(data.medianExpKappaTotal_perBase_perSampleBound[boundBarcode], "errorEstimatesTotalPerBase_selectedSample"+std::to_string(boundBarcode)+".csv", errorDir);
             printMapOfVector(data.medianExpKappaTotal_perBase_perSampleUnbound[unboundBarcode], "errorEstimatesTotalPerBase_nonselectedSample"+std::to_string(unboundBarcode)+".csv", errorDir);
 
-            printMapOfDouble(data.perc25ExpKappaTotal_perSampleBound[boundBarcode], "perc25ErrorTotal_selectedSample"+std::to_string(boundBarcode)+".csv", errorDir);
             printMapOfDouble(data.perc25ExpKappaTotal_perSampleUnbound[unboundBarcode], "perc25ErrorTotal_nonselectedSample"+std::to_string(unboundBarcode)+".csv", errorDir);
-            printMapOfDouble(data.perc75ExpKappaTotal_perSampleBound[boundBarcode], "perc75ErrorTotal_selectedSample"+std::to_string(boundBarcode)+".csv", errorDir);
             printMapOfDouble(data.perc75ExpKappaTotal_perSampleUnbound[unboundBarcode], "perc75ErrorTotal_nonselectedSample"+std::to_string(unboundBarcode)+".csv", errorDir);
         }
+
+        for(auto sampleBoundIt = data.medianExpKappaTotal_perSampleBound.begin(); sampleBoundIt!=data.medianExpKappaTotal_perSampleBound.end(); ++sampleBoundIt) {
+            int boundBarcode = sampleBoundIt->first;
+            printMapOfDouble(data.medianExpKappaTotal_perSampleBound[boundBarcode], "errorEstimatesTotal_selectedSample"+std::to_string(boundBarcode)+".csv", errorDir);
+            printMapOfVector(data.medianExpKappaTotal_perBase_perSampleBound[boundBarcode], "errorEstimatesTotalPerBase_selectedSample"+std::to_string(boundBarcode)+".csv", errorDir);
+
+            printMapOfDouble(data.perc25ExpKappaTotal_perSampleBound[boundBarcode], "perc25ErrorTotal_selectedSample"+std::to_string(boundBarcode)+".csv", errorDir);
+            printMapOfDouble(data.perc75ExpKappaTotal_perSampleBound[boundBarcode], "perc75ErrorTotal_selectedSample"+std::to_string(boundBarcode)+".csv", errorDir);        }
     }
     
     void readRatesPerPosition(utils::ratesPerPos& rates, const string& filename, const string& resultDir) {
@@ -412,15 +416,15 @@ namespace ioTools {
                 readDoublePerPosition(data.medianExpKappaTotal_perSampleUnbound[unboundBarcode], fileName, errorDir);
 
                 fileName = "errorEstimatesTotalPerBase_selectedSample"+std::to_string(boundBarcode)+".csv";
-                std::map<int, std::vector<double>> blub;
-                readRatesPerPosition(blub, fileName, errorDir);
-                data.medianExpKappaTotal_perBase_perSampleBound[boundBarcode] = blub;
+                std::map<int, std::vector<double>> rates;
+                readRatesPerPosition(rates, fileName, errorDir);
+                data.medianExpKappaTotal_perBase_perSampleBound[boundBarcode] = rates;
 
-                blub.clear();
+                rates.clear();
                 fileName = "errorEstimatesTotalPerBase_nonselectedSample"+std::to_string(unboundBarcode)+".csv";
-                readRatesPerPosition(blub, fileName, errorDir);
-                data.medianExpKappaTotal_perBase_perSampleUnbound[unboundBarcode] = blub;
-                blub.clear();
+                readRatesPerPosition(rates, fileName, errorDir);
+                data.medianExpKappaTotal_perBase_perSampleUnbound[unboundBarcode] = rates;
+                rates.clear();
 
 
                 fileName = "perc25ErrorTotal_selectedSample"+std::to_string(boundBarcode)+".csv";

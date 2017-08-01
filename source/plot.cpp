@@ -745,6 +745,57 @@ namespace plot {
                     if(p5 < minYMaxEff)
                         minYMaxEff = std::floor(p5);
                 }
+
+
+                actPositions.push_back(pos);
+                for(int mut=0; mut < 3; ++mut) {
+                    double p95;
+                    double p5;
+                    if(mut == maxmutIdx) {
+                        p95 = perc95Max.back();
+                        p5 = perc5Max.back();
+                        medians[mut].push_back(mediansMax.back());
+                        perc95[mut].push_back(perc95Max.back());
+                        perc5[mut].push_back(perc5Max.back());
+                        perc75[mut].push_back(perc75Max.back());
+                        perc25[mut].push_back(perc25Max.back());
+                    } else {
+                        p95 = log2(utils::getPercentile(data.totalRelKD_perPos[pos][mut], 95));
+                        p5 = log2(utils::getPercentile(data.totalRelKD_perPos[pos][mut], 5));
+
+                        medians[mut].push_back(log2(data.KDmedians[pos][mut]));
+                        perc95[mut].push_back(p95);
+                        perc5[mut].push_back(p5);
+                        perc75[mut].push_back(log2(utils::getPercentile(data.totalRelKD_perPos[pos][mut], 75)));
+                        perc25[mut].push_back(log2(utils::getPercentile(data.totalRelKD_perPos[pos][mut], 25)));
+                    }
+                    std::pair<double, double> iqr = utils::getxIQR(data.totalRelKD_perPos[pos][mut]);
+                    minIQR[mut].push_back(log2(iqr.first));
+                    maxIQR[mut].push_back(log2(iqr.second));
+
+                    if(pos >= begin && pos <= end) {
+                        if(p95 > maxY)
+                            maxY = std::ceil(p95);
+                        if(p5 < minY) {
+                            minY = std::floor(p5);
+                        }
+
+                    }
+
+                    int color = mut+1;
+                    if(mut >= data.ref[pos]-1)
+                        ++color;
+                    colors[mut].push_back(color);
+                    //use color for p-value star like for the boxplot, if not significant take white
+                    if(data.pvalues[pos][mut] >= param.alpha || std::isnan(data.pvalues[pos][mut]))
+                        color = 0;
+                    else if(mut == maxmutIdx)
+                        pValuesMaxEff.push_back(boost::make_tuple(pos, mediansMax.back(), color));
+                    if(data.KDmedians[pos][mut] > 1)
+                        posEffPValue[mut].push_back(std::make_pair(pos, color));
+                    else
+                        negEffPValue[mut].push_back(std::make_pair(pos, color));
+                }
             }
             else
             {
@@ -755,60 +806,6 @@ namespace plot {
                 perc25Max.push_back(0);
                 mediansMax.push_back(0);
                 actPositionsMax.push_back(pos);
-            }
-
-            //only plot valid positions (filtered during processing)
-            if(maxIt != data.maxMut.end())
-            {
-                actPositions.push_back(pos);
-				for(int mut=0; mut < 3; ++mut) {
-					double p95;
-					double p5;
-					if(mut == maxmutIdx) {
-						p95 = perc95Max.back();
-						p5 = perc5Max.back();
-						medians[mut].push_back(mediansMax.back());
-						perc95[mut].push_back(perc95Max.back());
-						perc5[mut].push_back(perc5Max.back());
-						perc75[mut].push_back(perc75Max.back());
-						perc25[mut].push_back(perc25Max.back());
-					} else {
-						p95 = log2(utils::getPercentile(data.totalRelKD_perPos[pos][mut], 95));
-						p5 = log2(utils::getPercentile(data.totalRelKD_perPos[pos][mut], 5));
-						
-						medians[mut].push_back(log2(data.KDmedians[pos][mut]));
-						perc95[mut].push_back(p95);
-						perc5[mut].push_back(p5);
-						perc75[mut].push_back(log2(utils::getPercentile(data.totalRelKD_perPos[pos][mut], 75)));
-						perc25[mut].push_back(log2(utils::getPercentile(data.totalRelKD_perPos[pos][mut], 25)));
-					}
-                    std::pair<double, double> iqr = utils::getxIQR(data.totalRelKD_perPos[pos][mut]);
-                    minIQR[mut].push_back(log2(iqr.first));
-                    maxIQR[mut].push_back(log2(iqr.second));
-					
-					if(pos >= begin && pos <= end) {
-                        if(p95 > maxY)
-							maxY = std::ceil(p95);
-                        if(p5 < minY) {
-							minY = std::floor(p5);
-                        }
-
-					}
-					
-					int color = mut+1;
-					if(mut >= data.ref[pos]-1)
-						++color;
-					colors[mut].push_back(color);
-					//use color for p-value star like for the boxplot, if not significant take white
-                    if(data.pvalues[pos][mut] >= param.alpha || std::isnan(data.pvalues[pos][mut]))
-						color = 0;
-					else if(mut == maxmutIdx)
-						pValuesMaxEff.push_back(boost::make_tuple(pos, mediansMax.back(), color));
-					if(data.KDmedians[pos][mut] > 1)
-						posEffPValue[mut].push_back(std::make_pair(pos, color));
-					else
-						negEffPValue[mut].push_back(std::make_pair(pos, color));
-				}
             }
 		}
 

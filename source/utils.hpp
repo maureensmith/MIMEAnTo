@@ -182,6 +182,21 @@ namespace utils {
                     maxValPerPos1[pos1] = w;
 
 			}
+
+            void put(int pos1, int pos2,  double r) {
+                std::pair<int, int> p(pos1, pos2);
+
+                 weightPerPosPair[p] = r;
+
+                double w = weightPerPosPair[p];
+// 				if(weightPerPosPair[std::make_pair(pos1, pos2)] > maxValPerPos2[pos2])
+// 					maxValPerPos2[pos2] = weightPerPosPair[std::make_pair(pos1, pos2)];
+
+                //save maximul seq count for each position (for normalizing)
+                if(w > maxValPerPos1[pos1])
+                    maxValPerPos1[pos1] = w;
+
+            }
 			
 			//divide by the maximum value for all pos2 eg: pos1=1 pos2=3 r=100 and pos1=2 pos2=3 r=20, max value is for pos2=3 is 100
 // 			void normalize() {
@@ -254,6 +269,11 @@ namespace utils {
                     ratesPerPosPair[p] += r.getArray();
 				}
 			}
+
+            void put(int pos1, int pos2,  Values& r) {
+                std::pair<int, int> p(pos1, pos2);
+                ratesPerPosPair[p] = r.getArray();
+            }
 			
 			void divide(int i) {
 				for(std::map<posPair, rateArray>::iterator it = ratesPerPosPair.begin(); it != ratesPerPosPair.end(); ++it) {

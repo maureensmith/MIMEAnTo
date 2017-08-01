@@ -30,13 +30,12 @@ namespace processing {
 
         //count all sequences for a pair combination
         weightPos.add(pos1, pos2, seqSum);
-        weightsPerSample[barcode].add(pos1, pos2, seqSum);
         counts.divide(numWtWt);
 
         expRatesFalseDetect.add(pos1, pos2, counts);
 
-        expFalseDetectPerSample[barcode].add(pos1, pos2, counts);
-
+        expFalseDetectPerSample[barcode].put(pos1, pos2, counts);
+        weightsPerSample[barcode].put(pos1, pos2, seqSum);
     }
 
     void getSingleErrorsAndWeights(const string& expDir, utils::Parameter& param, utils::refMap& ref, utils::sampleContainer& samples,
@@ -54,7 +53,6 @@ namespace processing {
                 ++numberOfExp;
                 int barcode = (*sampleIt).barcode;
                 utils::countsPerPosPair countsPP;
-
                 ioTools::readExperimentFile(barcode, expDir+"/2d", countsPP);
 
                 for(int pos1 = param.seqBegin; pos1 <= param.seqEnd; ++pos1) {
@@ -74,7 +72,6 @@ namespace processing {
                 barcodes.push_back(barcode);
             }
         }
-
         // average Rate of all experiments
         expRatesFalseDetect.divide(numberOfExp);
 
@@ -96,8 +93,6 @@ namespace processing {
         //save collected values for last position, refresh the containers for next position
         std::vector<double> medians(3);
         for(int i = 0; i < 3; ++i) {
-            //TODO: funktioniert das noch obwohl ich nicht bound und unbound abfrage sondern nur das jeweilige??
-            //if(sums_perBaseBound[i].size() > 0 && sums_perBaseUnbound[i].size() > 0)
             if(sums_perBase[i].size() > 0)
                 medians[i] = utils::getMedian(sums_perBase[i]);
 
@@ -108,8 +103,6 @@ namespace processing {
         for(auto barcodeIt = barcodes.begin(); barcodeIt != barcodes.end(); ++barcodeIt) {
 
             int barcode = *barcodeIt;
-            //TODO: funktioniert das noch obwohl ich nicht bound und unbound abfrage sondern nur das jeweilige??
-//                if(!(sumsPerSampleBound[boundBarcode]).empty() && !(sumsPerSampleUnbound[unboundBarcode]).empty())
             if(!(sumsPerSample[barcode]).empty())
             {
                 medianExpKappaTotal_perSample[barcode][actualPos1] = utils::getMedian(sumsPerSample[barcode]);
@@ -117,20 +110,22 @@ namespace processing {
                 perc75ExpKappaTotal_perSample[barcode][actualPos1] = utils::getPercentile(sumsPerSample[barcode], 75);
             }
 
-            (medianExpKappaTotal_perBase_perSample[barcode][actualPos1]).resize(3);
+            //in case the same sample is used for different settings
+            if(medianExpKappaTotal_perBase_perSample[barcode][actualPos1].empty()) {
+                (medianExpKappaTotal_perBase_perSample[barcode][actualPos1]).resize(3);
 
-            std::vector<double> medians(3);
-            for(int i= 0; i < 3; ++i)
-            {
-                 //TODO: funktioniert das noch obwohl ich nicht bound und unbound abfrage sondern nur das jeweilige??
-                //if(!(sumsPerSample_perBaseBound[boundBarcode][i]).empty() && !(sumsPerSample_perBaseUnbound[unboundBarcode][i]).empty())
-                if(!(sumsPerSample_perBase[barcode][i]).empty())
+                std::vector<double> medians(3);
+                for(int i= 0; i < 3; ++i)
                 {
-                    medians[i] = utils::getMedian(sumsPerSample_perBase[barcode][i]);
+                    if(!(sumsPerSample_perBase[barcode][i]).empty())
+                    {
+                        medians[i] = utils::getMedian(sumsPerSample_perBase[barcode][i]);
+                    }
+                    sumsPerSample_perBase[barcode][i].clear();
                 }
-                sumsPerSample_perBase[barcode][i].clear();
+                medianExpKappaTotal_perBase_perSample[barcode][actualPos1] = medians;
+
             }
-            medianExpKappaTotal_perBase_perSample[barcode][actualPos1] = medians;
         }
     }
 
@@ -158,7 +153,6 @@ namespace processing {
         // samplewise error estimation
         for(auto barcodeIt = barcodes.begin(); barcodeIt != barcodes.end(); ++barcodeIt) {
             int barcode = *barcodeIt;
-
             if(sumsPerSample_perBase.find(barcode) == sumsPerSample_perBase.end())
                 (sumsPerSample_perBase[barcode]).resize(3);
 
@@ -208,7 +202,7 @@ namespace processing {
 
         getSingleErrorsAndWeights(expDir, param, data.ref, data.bound, weightPosBound, weightsPerSampleBound, expRatesFalseDetectBound, expFalseDetectPerSampleBound, boundBarcodes);
         getSingleErrorsAndWeights(expDir, param, data.ref, data.unbound, weightPosUnbound, weightsPerSampleUnbound, expRatesFalseDetectUnbound, expFalseDetectPerSampleUnbound, unboundBarcodes);
-		
+
 		int actualPos1 = param.seqBegin;
 		std::map<int, std::multiset<double>> sumsPerSampleBound;
 		std::map<int, std::multiset<double>> sumsPerSampleUnbound;
@@ -331,17 +325,32 @@ namespace processing {
 //			}
 //		}
 
-
         int numberOfExp = 0;
         for(boundIt=data.bound.begin(), unboundIt=data.unbound.begin(); boundIt != data.bound.end(); ++boundIt, ++unboundIt) {
             if((*boundIt).library != 0) {
                 ++numberOfExp;
                 int boundBarcode = (*boundIt).barcode;
                 int unboundBarcode = (*unboundIt).barcode;
+
                 utils::countsPerPosPair boundCountsPP;
                 utils::countsPerPosPair unboundCountsPP;
                 ioTools::readExperimentFile(boundBarcode, expDir+"/2d", boundCountsPP);
                 ioTools::readExperimentFile(unboundBarcode, expDir+"/2d", unboundCountsPP);
+
+                //if errors are considered indipendently for each sample: find respective barcode of wildtype
+                int wtBoundBarcode = 0;
+                int wtUnboundBarcode = 0;
+                //if(!param.joinErrors) {
+                    for(wtBoundIt=data.bound.begin(); wtBoundIt != data.bound.end(); ++wtBoundIt)
+                    {
+                        if((*wtBoundIt).library == 0 && (*wtBoundIt).name == (*boundIt).name)
+                            wtBoundBarcode = (*wtBoundIt).barcode;
+                    }
+                    for(wtUnboundIt=data.unbound.begin(); wtUnboundIt != data.unbound.end(); ++wtUnboundIt) {
+                        if((*wtUnboundIt).library == 0 && (*wtUnboundIt).name == (*unboundIt).name)
+                            wtUnboundBarcode = (*wtUnboundIt).barcode;
+                    }
+                //}
 
                 //first count positions, normalize per experiment and add afterwards to vector
                 utils::WeightPerPosPair weightPerPosPairSingleExpBound;
@@ -366,9 +375,7 @@ namespace processing {
                     {
                         int pos2 = pos2It->first;
 
-
-                        if(pos2 >= param.seqBegin && pos2 <= param.seqEnd) {
-
+                        if(pos2 >= param.seqBegin && pos2 <= param.seqEnd && unboundCountsPP[pos1].find(pos2) != unboundCountsPP[pos1].end()) {
                             utils::Values boundCounts(boundCountsPP[pos1][pos2]);
                             utils::Values unboundCounts(unboundCountsPP[pos1][pos2]);
 							
@@ -406,24 +413,10 @@ namespace processing {
 							weightPerPosPairSingleExpBound.add(pos1, pos2, boundCountSum);
 							weightPerPosPairSingleExpUnbound.add(pos1,pos2,unboundCountSum);
 
-							
 							for(int mnucl=1, i=0; mnucl<5 && i<3; ++mnucl) {
 								if(wtBase1 != mnucl) {
 									int idx = 4*(mnucl-1)+wtBase2-1;
 									//****for each base *****
-
-                                    //if errors are considered indipendently for each sample: find respective barcode of wildtype
-                                    int wtBoundBarcode = boundBarcode;
-                                    int wtUnboundBarcode = unboundBarcode;
-                                    if(!param.joinErrors) {
-                                        for(wtBoundIt=data.bound.begin(), wtUnboundIt=data.unbound.begin(); wtBoundIt != data.bound.end(); ++wtBoundIt, ++wtUnboundIt)
-                                        {
-                                            if((*wtBoundIt).library == 0 && (*wtBoundIt).name == (*boundIt).name)
-                                                wtBoundBarcode = (*wtBoundIt).barcode;
-                                            if((*wtUnboundIt).library == 0 && (*wtUnboundIt).name == (*unboundIt).name)
-                                                wtUnboundBarcode = (*wtUnboundIt).barcode;
-                                        }
-                                    }
 
                                     if((param.joinErrors && (data.medianExpKappaBound_perBase.find(pos1) != data.medianExpKappaBound_perBase.end() && data.medianExpKappaBound_perBase[pos1][i]
                                             && data.medianExpKappaUnbound_perBase.find(pos1) != data.medianExpKappaUnbound_perBase.end() && data.medianExpKappaUnbound_perBase[pos1][i]))
@@ -432,7 +425,6 @@ namespace processing {
                                                 && data.medianExpKappaTotal_perBase_perSampleUnbound[wtUnboundBarcode].find(pos1) != data.medianExpKappaTotal_perBase_perSampleUnbound[wtUnboundBarcode].end()
                                                 && data.medianExpKappaTotal_perBase_perSampleUnbound[wtUnboundBarcode][pos1][i])) {
 										
-
                                         double noiseBound;
                                         double noiseUnbound;
 
@@ -474,13 +466,10 @@ namespace processing {
 							data.numSeqPerPosPairUnbound[pos1].push_back(unboundCountSum);
 							
                         } //end of if pos2 in interval
-
                     } // end of pos2 loop
 
-
-
                     } // end of if within sequence interval statement
-					
+
                 } // end of pos1 loop
 
                 //normalize per experiment
