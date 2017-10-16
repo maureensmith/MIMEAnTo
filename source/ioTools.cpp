@@ -283,7 +283,7 @@ namespace ioTools {
                     int wt = data.ref[actPos];
 
                     utils::rateArray counts(4);
-                    std::transform(splittedLine.begin()+1, splittedLine.end(), begin(counts), boost::lexical_cast<double, string>);
+                    std::transform(splittedLine.begin()+1, splittedLine.begin()+5, begin(counts), boost::lexical_cast<double, string>);
 
 
                     double mutSum = 0.0;
