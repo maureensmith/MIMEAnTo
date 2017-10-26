@@ -259,7 +259,9 @@ namespace plot {
 
         delete gp;
         callGnuplot(gpFile, resDir);
-        return file->string();
+        std::string fileStr = file->string();
+        delete file;
+        return fileStr;
 	}
 
     string plotMutationRatePerSampleBoxplot(const string& resDir, const string& expDir, utils::Parameter& param, utils::DataContainer& data, plot::PlotFormat plotformat, const string &filenamePrefix) {
@@ -391,7 +393,9 @@ namespace plot {
 
         delete gp;
         callGnuplot(gpFile, resDir);
-        return (*file).string();
+        std::string fileStr = file->string();
+        delete file;
+        return fileStr;
     }
 
 
@@ -637,7 +641,9 @@ namespace plot {
 
         delete gp;
         callGnuplot(gpFile, resDir);
-        return (*file).string();
+        std::string fileStr = file->string();
+        delete file;
+        return fileStr;
 	}
 
     string plotMedianErrorPerSample(const string& resDir, utils::Parameter& param, utils::DataContainer& data, plot::PlotFormat plotformat, const string &filenamePrefix) {
@@ -685,7 +691,7 @@ namespace plot {
 		std::vector<double> perc25Max;
 		std::vector<int> actPositionsMax;
         std::vector<int> actPositions;
-		std::vector<boost::tuple<int,double, int>> pValuesMaxEff;
+        std::vector<boost::tuple<int,double, int>> pValuesMaxEff;
 		
 		int minY = 0;
 		int maxY = 0;
@@ -708,10 +714,8 @@ namespace plot {
         }
 		
         std::vector<std::pair<double, int>> nullLine{std::make_pair(begin-0.5, 0), std::make_pair(end+0.5, 0)};
-        //for(int pos: data.positions) {
 
         for(int pos = begin; pos <=end; ++pos){
-// 			if(pos >= begin && pos <= end) {
             std::map<int,int>::iterator maxIt = data.maxMut.find(pos);
             int maxmut = -1;
             int maxmutIdx = -1;
@@ -807,13 +811,16 @@ namespace plot {
                 mediansMax.push_back(0);
                 actPositionsMax.push_back(pos);
             }
-		}
 
-        for(int pos=param.seqBegin; pos <= param.seqEnd; ++pos)
-        {
             int refColor = data.ref[pos];
             refStr.push_back(boost::make_tuple(pos,ACGT[data.ref[pos]-1], refColor));
-        }
+		}
+
+//        for(int pos=param.seqBegin; pos <= param.seqEnd; ++pos)
+//        {
+//            int refColor = data.ref[pos];
+//            refStr.push_back(boost::make_tuple(pos,ACGT[data.ref[pos]-1], refColor));
+//        }
 
 		
         //only show maximal y interval where data points are found
@@ -822,10 +829,9 @@ namespace plot {
         if(yTo > maxY)
             yTo = maxY;
 
-
-			
 		Gnuplot* gp;
 		fs::path* file;
+        std::string fileStr;
 
         fs::path gpFile(resDir+"/tmp/relKdwtMut.gp");
         std::string gnuplotCall = ">"+gpFile.string();
@@ -833,11 +839,13 @@ namespace plot {
         if(svg) {
             yRef = (yTo-yFrom)/4;
             file = new fs::path(resDir+"/tmp/relKdwtMut.svg");
+            fileStr = (*file).string();
+            delete file;
             //fs::path gpFile(resDir+"/tmp/relKdwtMut.gp");
             //gp = new Gnuplot("tee "+ gpFile.string()+" | gnuplot -persist");
             gp = new Gnuplot(gnuplotCall);
 
-            *gp << "set output '" << (*file).string() << "'\n";
+            *gp << "set output '" <<fileStr << "'\n";
             //set margins for multiplot: no gap between plot, enough space for axis labels
             *gp << "set tmargin 5\n";
 			*gp << "set bmargin 0\n";
@@ -856,11 +864,13 @@ namespace plot {
             if(!filenamePrefix.empty())
                 fileName += "_";
             file = new fs::path(resDir+"/plots"+fileName+filenamePrefix+".eps");
+            fileStr = (*file).string();
+            delete file;
             //fs::path gpFile(resDir+"/tmp/relKdWtMut.gp");
             //gp = new Gnuplot("tee "+ gpFile.string()+" | gnuplot -persist");
             gp = new Gnuplot(gnuplotCall);
 
-            *gp << "set output '" << (*file).string() << "'\n";
+            *gp << "set output '" << fileStr << "'\n";
 			//default size is 5 inchen x 3.5 inches and 40 positions fits perfect to this 
 			*gp << "set term postscript eps enhanced color size "<< std::max(std::round((end-begin+1)/8), 5.0) <<  ", 3.5\n"; 
 			//title and axis labels only in eps. for svg: show title in window
@@ -880,9 +890,11 @@ namespace plot {
             if(!filenamePrefix.empty())
                 fileName += "_";
             file = new fs::path(resDir+"/plots"+fileName+filenamePrefix+".pdf");
+            fileStr = (*file).string();
+            delete file;
             gp = new Gnuplot(gnuplotCall);
 
-            *gp << "set output '" << (*file).string() << "'\n";
+            *gp << "set output '" << fileStr << "'\n";
             //default size is 5 inchen x 3.5 inches and 40 positions fits perfect to this
             //*gp << "set term postscript eps enhanced color size "<< std::max(std::round((end-begin+1)/8), 5.0) <<  ", 3.5\n";
             *gp << "set term pdfcairo enhanced color size "<< std::max(std::round((end-begin+1)/8), 5.0) <<  ", 3.5 font 'Verdana, 8'\n";
@@ -982,11 +994,15 @@ namespace plot {
             if(!filenamePrefix.empty())
                 fileName += "_";
             file = new fs::path(resDir+"/plots"+fileName+filenamePrefix+".eps");
+            fileStr = (*file).string();
+            delete file;
             //fs::path gpFile(resDir+"/tmp/maxEffect.gp");
             //gp = new Gnuplot("tee " + gpFile.string()+" | gnuplot -persist");
+            // delete gp object for all Kd values and create new one for max Kd values, if saving them
+            delete gp;
             gp = new Gnuplot(gnuplotCall);
 			
-            *gp << "set output '" << (*file).string() << "'\n";
+            *gp << "set output '" << fileStr << "'\n";
             //plot maxEffect as whole
 //			*gp << "set term postscript eps enhanced color size "<< std::max(std::round((end-begin+1)/8), 5.0) <<  ", 3.5\n";
             *gp << "set term postscript eps enhanced color\n";
@@ -1010,11 +1026,15 @@ namespace plot {
             if(!filenamePrefix.empty())
                 fileName += "_";
             file = new fs::path(resDir+"/plots"+fileName+filenamePrefix+".pdf");
+            fileStr = (*file).string();
+            delete file;
             //fs::path gpFile(resDir+"/tmp/maxEffect.gp");
             //gp = new Gnuplot("tee " + gpFile.string()+" | gnuplot -persist");
+            // delete gp object for all Kd values and create new one for max Kd values, if saving them
+            delete gp;
             gp = new Gnuplot(gnuplotCall);
 
-            *gp << "set output '" << (*file).string() << "'\n";
+            *gp << "set output '" << fileStr << "'\n";
             *gp << "set term pdfcairo enhanced color font 'Verdana, 8'\n";
             *gp << "set title 'Relative binding affinity wt -> mut_{max}'\n";
             *gp << "set grid ytics linestyle 0\n";
@@ -1065,8 +1085,6 @@ namespace plot {
                 *gp << "'-' with points pt 3 lc palette notitle\n";
         }
 
-		
-
 		(*gp).send1d(boost::make_tuple(actPositionsMax, perc95Max, perc75Max));
 		(*gp).send1d(boost::make_tuple(actPositionsMax, perc75Max, mediansMax));
 		(*gp).send1d(boost::make_tuple(actPositionsMax, mediansMax, perc25Max));
@@ -1075,13 +1093,14 @@ namespace plot {
         (*gp).send1d(nullLine);
         if(param.plotPValues)
             (*gp).send1d(pValuesMaxEff);
+
 		if(svg) {
 			*gp << "unset multiplot\n";
 			*gp << "set output\n";
 		}
         delete gp;
         callGnuplot(gpFile, resDir);
-        return (*file).string();
+        return fileStr;
 	}
 
     string plotAllEffects(const string& resDir, utils::Parameter& param, utils::DataContainer& data, plot::PlotFormat plotformat, const string &filenamePrefix) {

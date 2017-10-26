@@ -324,7 +324,8 @@ namespace ioTools {
             printMapOfVector(data.medianExpKappaTotal_perBase_perSampleBound[boundBarcode], "errorEstimatesTotalPerBase_selectedSample"+std::to_string(boundBarcode)+".csv", errorDir);
 
             printMapOfDouble(data.perc25ExpKappaTotal_perSampleBound[boundBarcode], "perc25ErrorTotal_selectedSample"+std::to_string(boundBarcode)+".csv", errorDir);
-            printMapOfDouble(data.perc75ExpKappaTotal_perSampleBound[boundBarcode], "perc75ErrorTotal_selectedSample"+std::to_string(boundBarcode)+".csv", errorDir);        }
+            printMapOfDouble(data.perc75ExpKappaTotal_perSampleBound[boundBarcode], "perc75ErrorTotal_selectedSample"+std::to_string(boundBarcode)+".csv", errorDir);
+        }
     }
     
     void readRatesPerPosition(utils::ratesPerPos& rates, const string& filename, const string& resultDir) {

@@ -177,7 +177,7 @@ namespace utils {
 // 				if(weightPerPosPair[std::make_pair(pos1, pos2)] > maxValPerPos2[pos2])
 // 					maxValPerPos2[pos2] = weightPerPosPair[std::make_pair(pos1, pos2)];
 				
-				//save maximul seq count for each position (for normalizing)
+                //save maximal seq count for each position (for normalizing)
                 if(w > maxValPerPos1[pos1])
                     maxValPerPos1[pos1] = w;
 
@@ -192,7 +192,7 @@ namespace utils {
 // 				if(weightPerPosPair[std::make_pair(pos1, pos2)] > maxValPerPos2[pos2])
 // 					maxValPerPos2[pos2] = weightPerPosPair[std::make_pair(pos1, pos2)];
 
-                //save maximul seq count for each position (for normalizing)
+                //save maximal seq count for each position (for normalizing)
                 if(w > maxValPerPos1[pos1])
                     maxValPerPos1[pos1] = w;
 
