@@ -319,6 +319,9 @@ void MIMEMainWindow::initKDComputationPage() {
     ui->minCoverageSpinBox->setValue(parameter.minimumNrCalls);
     ui->minKDSpinBox->setValue(parameter.minNumberEstimatableKDs);
 
+    ui->minMutRateDoubleSpinBox->setValue(parameter.minMutRate);
+    ui->significanceDoubleSpinBox->setValue(parameter.significanceThreshold);
+
     ui->KDyAxisFromDoubleSpinBox->setValue(parameter.plotYAxisFrom);
     ui->KDyAxisToDoubleSpinBox->setValue(parameter.plotYAxisTo);
 }
@@ -1104,6 +1107,8 @@ void MIMEMainWindow::on_qualityCriteriaPushButton_clicked()
     parameter.minNumberEstimatableKDs = ui->minKDSpinBox->value();
     //TODO: wenn Wert von weight threshold bei error estimation abweicht: Warnung ausgeben
     parameter.weightThreshold = ui->weightThrKDSpinBox->value()/100.0;
+    parameter.minMutRate = ui->minMutRateDoubleSpinBox->value();
+    parameter.significanceThreshold = ui->significanceDoubleSpinBox->value();
 
     parameter.plotYAxisFrom = ui->KDyAxisFromDoubleSpinBox->value();
     parameter.plotYAxisTo = ui->KDyAxisToDoubleSpinBox->value();

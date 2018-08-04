@@ -363,11 +363,18 @@ namespace processing {
                     if(numberOfExp == 1) {
                         data.signal2noiseBound_perPos[pos1].resize(3);
                         data.signal2noiseUnbound_perPos[pos1].resize(3);
+
+
+                        data.mutRateBound_perPos[pos1].resize(3);
+                        data.mutRateUnbound_perPos[pos1].resize(3);
+
                         data.totalRawRelKD_perPos[pos1].resize(3);
                         for(int i=0; i<3; ++i) {
                             data.signal2noiseBound_perPos[pos1][i].reserve(maximalVecSize);
                             data.signal2noiseUnbound_perPos[pos1][i].reserve(maximalVecSize);
                             data.totalRawRelKD_perPos[pos1][i].reserve(maximalVecSize);
+                            data.mutRateBound_perPos[pos1][i].reserve(maximalVecSize);
+                            data.mutRateUnbound_perPos[pos1][i].reserve(maximalVecSize);
                         }
                     }
 
@@ -443,6 +450,9 @@ namespace processing {
 
 										data.signal2noiseBound_perPos[pos1][i].push_back(boundCounts[idx]/(boundNumWtWt*noiseBound));
 										data.signal2noiseUnbound_perPos[pos1][i].push_back(unboundCounts[idx]/(unboundNumWtWt*noiseUnbound));
+
+                                        data.mutRateBound_perPos[pos1][i].push_back(boundCounts[idx]/boundCountSum);
+                                        data.mutRateUnbound_perPos[pos1][i].push_back(unboundCounts[idx]/unboundCountSum);
 
 										if(std::isinf(unboundCounts[idx]/(unboundNumWtWt*noiseUnbound)))
 											//not enough signal at supernatent => signal-to-noise-ratio too bad
@@ -553,7 +563,8 @@ namespace processing {
                                   if((data.signal2noiseBound_perPos[pos1][mut][i] < param.minSignal2NoiseStrength
                                     && data.signal2noiseUnbound_perPos[pos1][mut][i] < param.minSignal2NoiseStrength)
                                     || data.positionWeightsBound[pos1][i] < param.weightThreshold || data.numSeqPerPosPairBound[pos1][i] < param.minimumNrCalls
-                                    || data.positionWeightsUnbound[pos1][i] < param.weightThreshold || data.numSeqPerPosPairUnbound[pos1][i] < param.minimumNrCalls) {
+                                    || data.positionWeightsUnbound[pos1][i] < param.weightThreshold || data.numSeqPerPosPairUnbound[pos1][i] < param.minimumNrCalls
+                                    || data.mutRateBound_perPos[pos1][mut][i]< std::pow(10,-param.minMutRate)|| data.mutRateUnbound_perPos[pos1][mut][i]< std::pow(10,-param.minMutRate)) {
 
                                     data.totalRelKD_perPos[pos1][mut][i] = std::numeric_limits<double>::quiet_NaN();
 
@@ -573,13 +584,15 @@ namespace processing {
                                     //careful: not all compiler like isnan
                                     if(!std::isnan(KDvalue_log2)) {
                                         ++data.numberOfKDs[pos1][mut];
+                                        //Instead of any signal only consider signals higher or lower a certain threshold as significant
+                                        double sigThreshold = param.significanceThreshold == 0 ? 0 : log2(param.significanceThreshold);
 
-                                        if(KDvalue_log2 >= 0) {
+                                        if(KDvalue_log2 >= -sigThreshold) {
                                             ++numberOfKDs_greaterZero[pos1][mut];
-                                        }
 
-                                        if(KDvalue_log2 <= 0) {
-                                            ++numberOfKDs_smallerZero[pos1][mut];
+                                        }
+                                        if(KDvalue_log2 <= sigThreshold) {
+                                         ++numberOfKDs_smallerZero[pos1][mut];
                                         }
                                     }
                                 }
@@ -619,11 +632,15 @@ namespace processing {
                                     //careful: not all compiler like isnan
                                     if(!std::isnan(KDvalue_log2)) {
                                         ++data.numberOfKDs[pos1][mut];
-                                        if(KDvalue_log2 >= 0) {
+                                        //Instead of any signal only consider signals higher or lower a certain threshold as significant
+                                        double sigThreshold = param.significanceThreshold == 0 ? 0 : log2(param.significanceThreshold);
+
+                                        if(KDvalue_log2 >= -sigThreshold) {
                                             ++numberOfKDs_greaterZero[pos1][mut];
+
                                         }
-                                        if(KDvalue_log2 <= 0) {
-                                            ++numberOfKDs_smallerZero[pos1][mut];
+                                        if(KDvalue_log2 <= sigThreshold) {
+                                         ++numberOfKDs_smallerZero[pos1][mut];
                                         }
                                     }
 
@@ -646,12 +663,15 @@ namespace processing {
                                     //careful: not all compiler like isnan
                                     if(!std::isnan(KDvalue_log2)) {
                                         ++data.numberOfKDs[pos1][mut];
+                                        //Instead of any signal only consider signals higher or lower a certain threshold as significant
+                                        double sigThreshold = param.significanceThreshold == 0 ? 0 : log2(param.significanceThreshold);
 
-                                        if(KDvalue_log2 >= 0) {
+                                        if(KDvalue_log2 >= -sigThreshold) {
                                             ++numberOfKDs_greaterZero[pos1][mut];
+
                                         }
-                                        if(KDvalue_log2 <= 0) {
-                                            ++numberOfKDs_smallerZero[pos1][mut];
+                                        if(KDvalue_log2 <= sigThreshold) {
+                                         ++numberOfKDs_smallerZero[pos1][mut];
                                         }
                                     }
 
@@ -682,10 +702,11 @@ namespace processing {
 		std::vector<bool> pvalueSmallerAlpha(pvalues.size(), false);
 		
 //		#pragma omp parallel for schedule(guided, 10) default(none) shared(std::cout, param, data, numPValues, pvalues, sortedPValueIndices, pvalueSmallerAlpha)
-		for(int i = 0; i < numPValues; ++i) {
-				pvalues[sortedPValueIndices[i]] *=((double)numPValues/(i+1.f));
-				//remember pvalues smaller alpha
-				pvalueSmallerAlpha[sortedPValueIndices[i]] = pvalues[sortedPValueIndices[i]] < param.alpha;	
+        for(int i = 0; i < numPValues; ++i) {
+                //pvalues[sortedPValueIndices[i]] *=((double)numPValues/(i+1.f));
+                pvalues[sortedPValueIndices[i]] = std::min<double>(1.f,  pvalues[sortedPValueIndices[i]] *((double)numPValues/(i+1.f)));
+                //remember pvalues smaller alpha
+                pvalueSmallerAlpha[sortedPValueIndices[i]] = pvalues[sortedPValueIndices[i]] < param.alpha;
 		}
 
 // 		for(int pos1 = param.seqBegin; pos1 <= param.seqEnd; ++pos1) 

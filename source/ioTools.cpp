@@ -465,6 +465,18 @@ namespace ioTools {
         readVectorOfVectorPerPosition(data.signal2noiseUnbound_perPos, "signal2NoiseRatioNonselected.csv", resultDir);
     }
 
+    void writeMutRate(const string& resultDir, utils::DataContainer& data) {
+        std::cout << "Write mutation rates... " << std::endl;
+        printMapOfVectorOfVector(data.mutRateBound_perPos, "mutRatesSelected.csv", resultDir);
+        printMapOfVectorOfVector(data.mutRateUnbound_perPos, "mutRatesNonselected.csv", resultDir);
+    }
+
+    void readMutRate(const string& resultDir, utils::DataContainer& data) {
+        std::cout << "Read mutation rates... " << std::endl;
+        readVectorOfVectorPerPosition(data.mutRateBound_perPos, "mutRatesSelected.csv", resultDir);
+        readVectorOfVectorPerPosition(data.mutRateUnbound_perPos, "mutRatesNonselected.csv", resultDir);
+    }
+
     void writePositionWeights(const string& resultDir, utils::DataContainer& data) {
         std::cout << "Write percentage of maximal coverage... " << std::endl;
         printMapOfVector(data.positionWeightsBound, "percentOfMaxCovSelected.csv", resultDir);
@@ -492,6 +504,7 @@ namespace ioTools {
     void writeRawKDCriteria(const string& resDir, utils::DataContainer& data, const string& filename) {
         std::string resultDir = createDir(resDir+"/KdResults");
         writeRawKDValues(resultDir, data, filename);
+        writeMutRate(resultDir, data);
         writeSignal2Noise(resultDir, data);
         writePositionWeights(resultDir, data);
         writeSequenceNumbers(resultDir, data);
@@ -501,6 +514,7 @@ namespace ioTools {
         std::string resultDir(resDir+"/KdResults");
         data.clearRawKDCriteria();
         readRawKDValues(resultDir, data, filename);
+        readMutRate(resultDir, data);
         readSignal2Noise(resultDir, data);
         readPositionWeights(resultDir, data);
         readSequenceNumbers(resultDir, data);
@@ -661,12 +675,15 @@ namespace ioTools {
             outfile << "minimumNrCalls\t" << param.minimumNrCalls << std::endl;
             outfile << "minNumberEstimatableKds\t" << param.minNumberEstimatableKDs << std::endl;
             outfile << "minSignal2NoiseStrength\t" << param.minSignal2NoiseStrength<< std::endl;
+            outfile << "minMutRate\t" << param.minMutRate << std::endl;
             outfile << "seqBegin\t" << param.seqBegin << std::endl;
             outfile << "seqEnd\t" << param.seqEnd << std::endl;
             outfile << "percOfMaxCov\t" << param.weightThreshold<< std::endl;
             outfile << "joinErrors\t" << std::boolalpha << param.joinErrors << std::endl;
             outfile << "plotYAxisFrom\t" << param.plotYAxisFrom<< std::endl;
             outfile << "plotYAxisTo\t" << param.plotYAxisTo<< std::endl;
+            outfile << "signThreshold\t" << param.significanceThreshold << std::endl;
+
 
             for(auto s : data.bound) {
                 outfile << "selected\t" << s.barcode << "\t" << s.name << "\t" << s.library << std::endl;
@@ -727,6 +744,8 @@ namespace ioTools {
                         param.minNumberEstimatableKDs = std::stoi(splittedLine[1]);
                     else if(splittedLine[0] == "minSignal2NoiseStrength")
                         param.minSignal2NoiseStrength = boost::lexical_cast<double>(splittedLine[1]);
+                    else if(splittedLine[0] == "minMutRate")
+                        param.minMutRate = boost::lexical_cast<double>(splittedLine[1]);
                     else if(splittedLine[0] == "seqBegin")
                         param.seqBegin = std::stoi(splittedLine[1]);
                     else if(splittedLine[0] == "seqEnd")
@@ -747,6 +766,8 @@ namespace ioTools {
                     {
                         utils::Sample sample(splittedLine[2], std::stoi(splittedLine[1]), utils::UNBOUND, std::stoi(splittedLine[3]));
                         data.unbound.insert(sample);
+                    }else if(splittedLine[0] == "signThreshold") {
+                        param.significanceThreshold = boost::lexical_cast<double>(splittedLine[1]);
                     }
 
 

@@ -343,6 +343,9 @@ namespace utils {
         //coeffcient threshold at what a warning is given that the data looks strange
         const double coeffThreshold = 100.0;
 
+        //significant if log2(Kd) is X fold higher/lower than the threshold
+        double significanceThreshold = 0;
+
 		//TODO: Enumeration of types
 		bool virion = false;
 
@@ -364,8 +367,8 @@ namespace utils {
 		double minSignal2NoiseStrength = 2;
 		double alpha = 0.05;
 		int minNumberEstimatableKDs = 50;
-		bool generateOutput = true;
-		bool fullPlot = true;
+        //minimum mutation rate (10^-minMutRate)
+        double minMutRate = 4.0;
 
         //Plot values for the KD plots
 		int plotStartRegion = 70;
@@ -425,6 +428,10 @@ namespace utils {
 //        std::map<int, std::map<int, double>> stdExpKappaTotal_perSampleUnbound;
 
 
+
+        //for each position collect all  mutation rates per mutationsites(3) in 2 vectors
+        std::map<int, std::vector<std::vector<double>>> mutRateBound_perPos;
+        std::map<int, std::vector<std::vector<double>>> mutRateUnbound_perPos;
 		
 		// for each position collect all  singal2noise values per mutationsites(3) in 2 vectors
 		std::map<int, std::vector<std::vector<double>>> signal2noiseBound_perPos;
@@ -502,6 +509,11 @@ namespace utils {
             signal2noiseUnbound_perPos.clear();
 //            signal2noiseBound_total.clear();
 //            signal2noiseUnbound_total.clear();
+        }
+
+        void clearMutRates() {
+            mutRateBound_perPos.clear();
+            mutRateUnbound_perPos.clear();
         }
 
         void clearPositionWeights() {

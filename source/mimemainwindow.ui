@@ -752,16 +752,13 @@
              <string>Quality criteria</string>
             </property>
             <layout class="QGridLayout" name="gridLayout_5">
-             <item row="0" column="0">
-              <widget class="QLabel" name="label_2">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
+             <item row="6" column="1">
+              <widget class="QDoubleSpinBox" name="minMutRateDoubleSpinBox">
+               <property name="maximum">
+                <double>16.000000000000000</double>
                </property>
-               <property name="text">
-                <string>% of max. cov.:</string>
+               <property name="value">
+                <double>4.000000000000000</double>
                </property>
               </widget>
              </item>
@@ -778,22 +775,16 @@
                </property>
               </widget>
              </item>
-             <item row="1" column="1">
-              <widget class="QSpinBox" name="minCoverageSpinBox">
+             <item row="2" column="1">
+              <widget class="QDoubleSpinBox" name="s2nDoubleSpinBox">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
                </property>
-               <property name="minimum">
-                <number>1</number>
-               </property>
-               <property name="maximum">
-                <number>999999</number>
-               </property>
                <property name="value">
-                <number>100000</number>
+                <double>2.000000000000000</double>
                </property>
               </widget>
              </item>
@@ -810,21 +801,30 @@
                </property>
               </widget>
              </item>
-             <item row="2" column="1">
-              <widget class="QDoubleSpinBox" name="s2nDoubleSpinBox">
+             <item row="4" column="1">
+              <widget class="QDoubleSpinBox" name="alphaDoubleSpinBox">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
                  <horstretch>0</horstretch>
                  <verstretch>0</verstretch>
                 </sizepolicy>
                </property>
+               <property name="minimum">
+                <double>0.010000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>1.000000000000000</double>
+               </property>
+               <property name="singleStep">
+                <double>0.010000000000000</double>
+               </property>
                <property name="value">
-                <double>2.000000000000000</double>
+                <double>0.050000000000000</double>
                </property>
               </widget>
              </item>
-             <item row="3" column="0">
-              <widget class="QLabel" name="label_5">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_2">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
                  <horstretch>0</horstretch>
@@ -832,7 +832,7 @@
                 </sizepolicy>
                </property>
                <property name="text">
-                <string>min. number est. Kds:</string>
+                <string>% of max. cov.:</string>
                </property>
               </widget>
              </item>
@@ -865,8 +865,15 @@
                </property>
               </widget>
              </item>
-             <item row="4" column="1">
-              <widget class="QDoubleSpinBox" name="alphaDoubleSpinBox">
+             <item row="6" column="0">
+              <widget class="QLabel" name="label_16">
+               <property name="text">
+                <string>min. mut. rate: 10e-</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QSpinBox" name="minCoverageSpinBox">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
                  <horstretch>0</horstretch>
@@ -874,16 +881,26 @@
                 </sizepolicy>
                </property>
                <property name="minimum">
-                <double>0.010000000000000</double>
+                <number>1</number>
                </property>
                <property name="maximum">
-                <double>1.000000000000000</double>
-               </property>
-               <property name="singleStep">
-                <double>0.010000000000000</double>
+                <number>999999</number>
                </property>
                <property name="value">
-                <double>0.050000000000000</double>
+                <number>100000</number>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_5">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="text">
+                <string>min. number est. Kds:</string>
                </property>
               </widget>
              </item>
@@ -902,6 +919,16 @@
                 <number>50</number>
                </property>
               </widget>
+             </item>
+             <item row="5" column="0">
+              <widget class="QLabel" name="label_17">
+               <property name="text">
+                <string>significance threshold:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="1">
+              <widget class="QDoubleSpinBox" name="significanceDoubleSpinBox"/>
              </item>
             </layout>
            </widget>
