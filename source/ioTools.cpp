@@ -586,7 +586,7 @@ namespace ioTools {
         fs::ofstream outfile(KDFile.string());
         if(outfile.good()) {
             outfile << "pos1\twt base\tmax effect mut";
-            outfile << "\tmedian Kd\tp-value\t#resamplings\t#lower estimates\t#upper estimates\t5. percentil\t95. percentil" << std::endl;
+            outfile << "\tmedian Kd\tp-value\t#resamplings\t#lower estimates\t#upper estimates\t5. percentil\t95. percentil\t25. percentil\t75. percentil" << std::endl;
             for(auto posIt = data.totalRelKD_perPos.begin(); posIt != data.totalRelKD_perPos.end(); ++posIt) {
                 int pos1 = posIt->first;
                 int wtBase1 = data.ref[pos1];
@@ -603,6 +603,8 @@ namespace ioTools {
                     outfile << "\t" << std::setprecision(10) << data.upperLimitsKD_perPos[pos1][maxmutIdx];
                     outfile << "\t" << std::setprecision(10) << utils::getPercentile(data.totalRelKD_perPos[pos1][maxmutIdx], 5);
                     outfile << "\t" << std::setprecision(10) << utils::getPercentile(data.totalRelKD_perPos[pos1][maxmutIdx], 95);
+                    outfile << "\t" << std::setprecision(10) << utils::getPercentile(data.totalRelKD_perPos[pos1][maxmutIdx], 25);
+                    outfile << "\t" << std::setprecision(10) << utils::getPercentile(data.totalRelKD_perPos[pos1][maxmutIdx], 75);
                     outfile << std::endl;
                 }
 
@@ -682,6 +684,8 @@ namespace ioTools {
             outfile << "joinErrors\t" << std::boolalpha << param.joinErrors << std::endl;
             outfile << "plotYAxisFrom\t" << param.plotYAxisFrom<< std::endl;
             outfile << "plotYAxisTo\t" << param.plotYAxisTo<< std::endl;
+            outfile << "plotStartRegion\t" << param.plotStartRegion<< std::endl;
+            outfile << "plotEndRegion\t" << param.plotEndRegion<< std::endl;
             outfile << "signThreshold\t" << param.significanceThreshold << std::endl;
 
 
@@ -758,6 +762,10 @@ namespace ioTools {
                         param.plotYAxisFrom = boost::lexical_cast<double>(splittedLine[1]);
                     else if(splittedLine[0] == "plotYAxisTo")
                         param.plotYAxisTo = boost::lexical_cast<double>(splittedLine[1]);
+                    else if(splittedLine[0] == "plotStartRegion")
+                        param.plotStartRegion = std::stoi(splittedLine[1]);
+                    else if(splittedLine[0] == "plotEndRegion")
+                        param.plotEndRegion = std::stoi(splittedLine[1]);
                     else if(splittedLine[0] == "selected")
                     {
                         utils::Sample sample(splittedLine[2], std::stoi(splittedLine[1]), utils::BOUND, std::stoi(splittedLine[3]));

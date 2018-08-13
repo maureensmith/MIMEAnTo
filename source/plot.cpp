@@ -47,8 +47,13 @@ namespace plot {
         if(!_NSGetExecutablePath(execPathBuf, &size))
         {
             fs::path execFile(execPathBuf);
-            //Find path to executable and add the relative path to gnuplot, add the gp file to the command and pipe the error to the logFile
-            gnuplotExe = execFile.parent_path().string() +"/../PlugIns/Gnuplot.app/Contents/Resources/bin/gnuplot-run.sh "+ gpFile.string() + " 2>> " + gnuplotLogFile.string();
+            // if directory with gnuplot is present in the same directory as executable (Console version), othrewise take the packed version of dmg
+            if(ioTools::fileExists(execFile.parent_path().string() +"/gnuplot/Gnuplot.app/Contents/Resources/bin/gnuplot-run.sh")) {
+                gnuplotExe = execFile.parent_path().string() +"/gnuplot/Gnuplot.app/Contents/Resources/bin/gnuplot-run.sh " + gpFile.string() + " 2>> " + gnuplotLogFile.string();
+            } else {
+                //Find path to executable and add the relative path to gnuplot, add the gp file to the command and pipe the error to the logFile
+                gnuplotExe = execFile.parent_path().string() +"/../PlugIns/Gnuplot.app/Contents/Resources/bin/gnuplot-run.sh "+ gpFile.string() + " 2>> " + gnuplotLogFile.string();
+            }
         } else
             throw MIME_PathToExecutableNotFoundException();
     #endif

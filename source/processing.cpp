@@ -34,8 +34,8 @@ namespace processing {
 
         expRatesFalseDetect.add(pos1, pos2, counts);
 
-        expFalseDetectPerSample[barcode].put(pos1, pos2, counts);
-        weightsPerSample[barcode].put(pos1, pos2, seqSum);
+        expFalseDetectPerSample[barcode].add(pos1, pos2, counts);
+        weightsPerSample[barcode].add(pos1, pos2, seqSum);
     }
 
     void getSingleErrorsAndWeights(const string& expDir, utils::Parameter& param, utils::refMap& ref, utils::sampleContainer& samples,
@@ -121,7 +121,7 @@ namespace processing {
                     {
                         medians[i] = utils::getMedian(sumsPerSample_perBase[barcode][i]);
                     }
-                    sumsPerSample_perBase[barcode][i].clear();
+                    //sumsPerSample_perBase[barcode][i].clear();
                 }
                 medianExpKappaTotal_perBase_perSample[barcode][actualPos1] = medians;
 
@@ -153,10 +153,13 @@ namespace processing {
         // samplewise error estimation
         for(auto barcodeIt = barcodes.begin(); barcodeIt != barcodes.end(); ++barcodeIt) {
             int barcode = *barcodeIt;
-            if(sumsPerSample_perBase.find(barcode) == sumsPerSample_perBase.end())
-                (sumsPerSample_perBase[barcode]).resize(3);
+//            if(sumsPerSample_perBase.find(barcode) == sumsPerSample_perBase.end())
+//                (sumsPerSample_perBase[barcode]).resize(3);
 
             if(weightsPerSample[barcode][std::make_pair(pos1, pos2)] > weightThreshold) {
+                if(sumsPerSample_perBase.find(barcode) == sumsPerSample_perBase.end())
+                    (sumsPerSample_perBase[barcode]).resize(3);
+
                 utils::rateArray countvalues = expFalseDetectPerSample[barcode].getValues(pos1, pos2);
                 //total sum of mutations
                 double sum = 0;
@@ -202,6 +205,17 @@ namespace processing {
 
         getSingleErrorsAndWeights(expDir, param, data.ref, data.bound, weightPosBound, weightsPerSampleBound, expRatesFalseDetectBound, expFalseDetectPerSampleBound, boundBarcodes);
         getSingleErrorsAndWeights(expDir, param, data.ref, data.unbound, weightPosUnbound, weightsPerSampleUnbound, expRatesFalseDetectUnbound, expFalseDetectPerSampleUnbound, unboundBarcodes);
+
+        //only uniquebarcodes: in case a barcode for the wildtype is used for different mut barcodes,
+        //it appears more often in the vector (to be able to iterate over mut and wt simultaneously)
+        std::sort(boundBarcodes.begin(), boundBarcodes.end());
+        boundBarcodes.erase( unique( boundBarcodes.begin(), boundBarcodes.end() ), boundBarcodes.end() );
+
+        std::sort(unboundBarcodes.begin(), unboundBarcodes.end());
+        unboundBarcodes.erase( unique( unboundBarcodes.begin(), unboundBarcodes.end() ), unboundBarcodes.end() );
+
+
+
 
 		int actualPos1 = param.seqBegin;
 		std::map<int, std::multiset<double>> sumsPerSampleBound;
@@ -553,13 +567,20 @@ namespace processing {
                 lowerBoundIdx[1].reserve(data.numSeqPerPosPairBound[pos1].size());
                 lowerBoundIdx[2].reserve(data.numSeqPerPosPairBound[pos1].size());
 
-    //            #pragma omp parallel for schedule(guided, 10) default(none) shared(std::cout, param, data, pos1, wtBase1, validKdsForPercentile, numberOfKDs_smallerZero, numberOfKDs_greaterZero, upperBoundIdx, lowerBoundIdx)
-                for(unsigned int i=0; i < data.numSeqPerPosPairBound[pos1].size(); ++i) {
-                    for(int mnucl=1, mut=0; mnucl<5 && mut<3; ++mnucl) {
 
-                        if(wtBase1 != mnucl) {         
-                            if(data.totalRelKD_perPos[pos1][mut].size() > 0)
-                            {
+                //    //            #pragma omp parallel for schedule(guided, 10) default(none) shared(std::cout, param, data, pos1, wtBase1, validKdsForPercentile, numberOfKDs_smallerZero, numberOfKDs_greaterZero, upperBoundIdx, lowerBoundIdx)
+                //                for(unsigned int i=0; i < data.numSeqPerPosPairBound[pos1].size(); ++i) {
+                //                    for(int mnucl=1, mut=0; mnucl<5 && mut<3; ++mnucl) {
+
+                //                        if(wtBase1 != mnucl) {
+                //                            if(data.totalRelKD_perPos[pos1][mut].size() > 0)
+                //                            {
+                // TODO hab hier die schleifen getauscht
+                for(int mnucl=1, mut=0; mnucl<5 && mut<3; ++mnucl) {
+                    if(wtBase1 != mnucl) {
+                        if(!data.totalRelKD_perPos.at(pos1).at(mut).empty())
+                        {
+                            for(unsigned int i=0; i <data.totalRelKD_perPos.at(pos1).at(mut).size(); ++i) {
                                   if((data.signal2noiseBound_perPos[pos1][mut][i] < param.minSignal2NoiseStrength
                                     && data.signal2noiseUnbound_perPos[pos1][mut][i] < param.minSignal2NoiseStrength)
                                     || data.positionWeightsBound[pos1][i] < param.weightThreshold || data.numSeqPerPosPairBound[pos1][i] < param.minimumNrCalls
@@ -578,11 +599,11 @@ namespace processing {
                                     ++data.upperLimitsKD_perPos[pos1][mut];
                                     upperBoundIdx[mut].push_back(i);
                                 } else {
-                                    validKdsForPercentile[mut].insert(data.totalRelKD_perPos[pos1][mut][i]);                                   
                                     //count number of ressamplings (whicht are not nan) and numbers of binding increasing and decreasing mutations
                                     double KDvalue_log2 = log2(data.totalRelKD_perPos[pos1][mut][i]);
                                     //careful: not all compiler like isnan
                                     if(!std::isnan(KDvalue_log2)) {
+                                         validKdsForPercentile[mut].insert(data.totalRelKD_perPos[pos1][mut][i]);
                                         ++data.numberOfKDs[pos1][mut];
                                         //Instead of any signal only consider signals higher or lower a certain threshold as significant
                                         double sigThreshold = param.significanceThreshold == 0 ? 0 : log2(param.significanceThreshold);
