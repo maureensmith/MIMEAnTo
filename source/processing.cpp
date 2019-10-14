@@ -628,7 +628,7 @@ namespace processing {
                 //compute raw pvalues for those where number of counted KDs is high enough
                 for(int mnucl=1, mut=0; mnucl<5 && mut<3; ++mnucl) {
                     if(wtBase1 != mnucl) {
-                            double median;
+                            double median = std::numeric_limits<double>::quiet_NaN();
                             //double perc95;
                             //double perc5;
 
@@ -637,6 +637,7 @@ namespace processing {
                                 median = utils::getPercentile(validKdsForPercentile[mut], 50);
                                 //perc95 = utils::getPercentile(validKdsForPercentile[mut], 95);
                                 //perc5 = utils::getPercentile(validKdsForPercentile[mut], 5);
+                            }
 
         //                        #pragma omp parallel for schedule(guided, 10) default(none) shared(std::cout, param, data, mut, pos1, median, perc95, perc5, numberOfKDs_smallerZero, numberOfKDs_greaterZero, lowerBoundIdx)
                                 for(unsigned int i=0; i<lowerBoundIdx[mut].size(); ++i) {
@@ -697,7 +698,7 @@ namespace processing {
                                     }
 
                                 }
-                            }
+
 
                             if(data.numberOfKDs[pos1][mut] >= param.minNumberEstimatableKDs) {
                                 //collect all  pvalues for Benjamini Hochberg method
