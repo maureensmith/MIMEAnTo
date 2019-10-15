@@ -567,15 +567,6 @@ namespace processing {
                 lowerBoundIdx[1].reserve(data.numSeqPerPosPairBound[pos1].size());
                 lowerBoundIdx[2].reserve(data.numSeqPerPosPairBound[pos1].size());
 
-
-                //    //            #pragma omp parallel for schedule(guided, 10) default(none) shared(std::cout, param, data, pos1, wtBase1, validKdsForPercentile, numberOfKDs_smallerZero, numberOfKDs_greaterZero, upperBoundIdx, lowerBoundIdx)
-                //                for(unsigned int i=0; i < data.numSeqPerPosPairBound[pos1].size(); ++i) {
-                //                    for(int mnucl=1, mut=0; mnucl<5 && mut<3; ++mnucl) {
-
-                //                        if(wtBase1 != mnucl) {
-                //                            if(data.totalRelKD_perPos[pos1][mut].size() > 0)
-                //                            {
-                // TODO hab hier die schleifen getauscht
                 for(int mnucl=1, mut=0; mnucl<5 && mut<3; ++mnucl) {
                     if(wtBase1 != mnucl) {
                         if(!data.totalRelKD_perPos.at(pos1).at(mut).empty())
@@ -619,99 +610,96 @@ namespace processing {
                                 }
                             }
 
-
-                            ++mut;
-                        }
-                    }
-                }
-
-                //compute raw pvalues for those where number of counted KDs is high enough
-                for(int mnucl=1, mut=0; mnucl<5 && mut<3; ++mnucl) {
-                    if(wtBase1 != mnucl) {
+                            // compute raw pvalues for those where number of evaluable Kds is high enough
                             double median = std::numeric_limits<double>::quiet_NaN();
                             //double perc95;
                             //double perc5;
 
-                            if(data.numberOfKDs[pos1][mut] > 0 && !(validKdsForPercentile[mut]).empty()) {
-
+                            if(data.numberOfKDs[pos1][mut] >= param.minNumberEstimatableKDs) {
+                                int numberOfKdsIncludingUpperLower = data.numberOfKDs.at(pos1).at(mut);
                                 median = utils::getPercentile(validKdsForPercentile[mut], 50);
                                 //perc95 = utils::getPercentile(validKdsForPercentile[mut], 95);
                                 //perc5 = utils::getPercentile(validKdsForPercentile[mut], 5);
-                            }
 
-        //                        #pragma omp parallel for schedule(guided, 10) default(none) shared(std::cout, param, data, mut, pos1, median, perc95, perc5, numberOfKDs_smallerZero, numberOfKDs_greaterZero, lowerBoundIdx)
-                                for(unsigned int i=0; i<lowerBoundIdx[mut].size(); ++i) {
+
+                                //                        #pragma omp parallel for schedule(guided, 10) default(none) shared(std::cout, param, data, mut, pos1, median, perc95, perc5, numberOfKDs_smallerZero, numberOfKDs_greaterZero, lowerBoundIdx)
+                                for (unsigned int i = 0; i < lowerBoundIdx[mut].size(); ++i) {
                                     int idx = lowerBoundIdx[mut][i];
 
-                                    if(data.numberOfKDs[pos1][mut] == 0)
+                                    if (data.numberOfKDs[pos1][mut] == 0)
                                         data.totalRelKD_perPos[pos1][mut][idx] = std::numeric_limits<double>::quiet_NaN();
                                     else
                                         data.totalRelKD_perPos[pos1][mut][idx] = median;
-//                                    else
-//                                        data.totalRelKD_perPos[pos1][mut][idx] = perc95;
+                                    //                                    else
+                                    //                                        data.totalRelKD_perPos[pos1][mut][idx] = perc95;
                                     //count number of resamplings (which are not nan) and numbers of binding increasing and decreasing mutations
                                     double KDvalue_log2 = log2(data.totalRelKD_perPos[pos1][mut][idx]);
                                     //careful: not all compiler like isnan
-                                    if(!std::isnan(KDvalue_log2)) {
-                                        ++data.numberOfKDs[pos1][mut];
+                                    if (!std::isnan(KDvalue_log2)) {
+                                        ++numberOfKdsIncludingUpperLower;
                                         //Instead of any signal only consider signals higher or lower a certain threshold as significant
-                                        double sigThreshold = param.significanceThreshold == 0 ? 0 : log2(param.significanceThreshold);
+                                        double sigThreshold = param.significanceThreshold == 0 ? 0 : log2(
+                                                param.significanceThreshold);
 
-                                        if(KDvalue_log2 >= -sigThreshold) {
+                                        if (KDvalue_log2 >= -sigThreshold) {
                                             ++numberOfKDs_greaterZero[pos1][mut];
 
                                         }
-                                        if(KDvalue_log2 <= sigThreshold) {
-                                         ++numberOfKDs_smallerZero[pos1][mut];
+                                        if (KDvalue_log2 <= sigThreshold) {
+                                            ++numberOfKDs_smallerZero[pos1][mut];
                                         }
                                     }
 
                                 }
 
 
-        //                        #pragma omp parallel for schedule(guided, 10) default(none) shared(std::cout, param, data, mut, pos1, median, perc95, perc5, numberOfKDs_smallerZero, numberOfKDs_greaterZero, upperBoundIdx)
-                                for(unsigned int i=0; i<upperBoundIdx[mut].size(); ++i) {
+                                //                        #pragma omp parallel for schedule(guided, 10) default(none) shared(std::cout, param, data, mut, pos1, median, perc95, perc5, numberOfKDs_smallerZero, numberOfKDs_greaterZero, upperBoundIdx)
+                                for (unsigned int i = 0; i < upperBoundIdx[mut].size(); ++i) {
                                     int idx = upperBoundIdx[mut][i];
 
-                                    if(data.numberOfKDs[pos1][mut] == 0)
+                                    if (data.numberOfKDs[pos1][mut] == 0)
                                         data.totalRelKD_perPos[pos1][mut][idx] = std::numeric_limits<double>::quiet_NaN();
                                     else
                                         data.totalRelKD_perPos[pos1][mut][idx] = median;
-//                                    else
-//                                        data.totalRelKD_perPos[pos1][mut][idx] = perc5;
+                                    //                                    else
+                                    //                                        data.totalRelKD_perPos[pos1][mut][idx] = perc5;
 
                                     //count number of ressamplings (which are not nan) and numbers of binding increasing and decreasing mutations
                                     double KDvalue_log2 = log2(data.totalRelKD_perPos[pos1][mut][idx]);
                                     //careful: not all compiler like isnan
-                                    if(!std::isnan(KDvalue_log2)) {
-                                        ++data.numberOfKDs[pos1][mut];
+                                    if (!std::isnan(KDvalue_log2)) {
+                                        ++numberOfKdsIncludingUpperLower;
                                         //Instead of any signal only consider signals higher or lower a certain threshold as significant
-                                        double sigThreshold = param.significanceThreshold == 0 ? 0 : log2(param.significanceThreshold);
+                                        double sigThreshold = param.significanceThreshold == 0 ? 0 : log2(
+                                                param.significanceThreshold);
 
-                                        if(KDvalue_log2 >= -sigThreshold) {
+                                        if (KDvalue_log2 >= -sigThreshold) {
                                             ++numberOfKDs_greaterZero[pos1][mut];
 
                                         }
-                                        if(KDvalue_log2 <= sigThreshold) {
-                                         ++numberOfKDs_smallerZero[pos1][mut];
+                                        if (KDvalue_log2 <= sigThreshold) {
+                                            ++numberOfKDs_smallerZero[pos1][mut];
                                         }
                                     }
 
                                 }
-
-
-                            if(data.numberOfKDs[pos1][mut] >= param.minNumberEstimatableKDs) {
-                                //collect all  pvalues for Benjamini Hochberg method
-                                pvalues.push_back(min(numberOfKDs_smallerZero[pos1][mut], numberOfKDs_greaterZero[pos1][mut])/(double)data.numberOfKDs[pos1][mut]);
-                                //rememeber index of pvalue
-                                pvaluesIdx[pos1][mut] = numPValues;
-                                //count number of considered pvalues
-                                ++numPValues;
+                                    //collect all  pvalues for Benjamini Hochberg method
+                                    pvalues.push_back(min(numberOfKDs_smallerZero[pos1][mut],
+                                                          numberOfKDs_greaterZero[pos1][mut]) /
+                                                              (double) numberOfKdsIncludingUpperLower);
+                                    //rememeber index of pvalue
+                                    pvaluesIdx[pos1][mut] = numPValues;
+                                    //count number of considered pvalues
+                                    ++numPValues;
                             } else {
+                                // if not enough evaluable Kds, set everything to NaN
                                 pvaluesIdx[pos1][mut] = std::numeric_limits<double>::quiet_NaN();
+                                data.totalRelKD_perPos[pos1][mut].clear();
+
                             }
 
-                        ++mut;
+                            ++mut;
+                        }
                     }
                 }
             }
