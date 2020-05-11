@@ -25,13 +25,11 @@ namespace processing {
         utils::Values counts(countsPP);
 
         int numWtWt = counts[(nucl1-1)*4+nucl2-1];
-
         int seqSum = counts.sum();
 
         //count all sequences for a pair combination
         weightPos.add(pos1, pos2, seqSum);
         counts.divide(numWtWt);
-
         expRatesFalseDetect.add(pos1, pos2, counts);
 
         expFalseDetectPerSample[barcode].add(pos1, pos2, counts);
@@ -110,6 +108,9 @@ namespace processing {
                 perc75ExpKappaTotal_perSample[barcode][actualPos1] = utils::getPercentile(sumsPerSample[barcode], 75);
             }
 
+            //TODO und das hat ganz gefehlt
+            sumsPerSample[barcode].clear();
+
             //in case the same sample is used for different settings
             if(medianExpKappaTotal_perBase_perSample[barcode][actualPos1].empty()) {
                 (medianExpKappaTotal_perBase_perSample[barcode][actualPos1]).resize(3);
@@ -118,10 +119,11 @@ namespace processing {
                 for(int i= 0; i < 3; ++i)
                 {
                     if(!(sumsPerSample_perBase[barcode][i]).empty())
-                    {
+                    {   
                         medians[i] = utils::getMedian(sumsPerSample_perBase[barcode][i]);
                     }
-                    //sumsPerSample_perBase[barcode][i].clear();
+                    //TODO auskommentiert?
+                    sumsPerSample_perBase[barcode][i].clear();
                 }
                 medianExpKappaTotal_perBase_perSample[barcode][actualPos1] = medians;
 
@@ -167,7 +169,7 @@ namespace processing {
                 for(int mnucl=1, i=0; mnucl<5; ++mnucl) {
                     if(wtBase1 != mnucl) {
                         int idx = 4*(mnucl-1)+wtBase2-1;
-                        if(countvalues[idx] > 0)
+                        if(countvalues[idx] > 0 && !std::isnan(countvalues[idx]))
                             sumsPerSample_perBase[barcode][i].insert(countvalues[idx]);
                         sum += countvalues[idx];
                         ++i;
@@ -529,6 +531,7 @@ namespace processing {
         //delete old values before computing
         data.clearKDQualityCriteria();
         data.totalRelKD_perPos = data.totalRawRelKD_perPos;
+        std::cout << data.totalRawRelKD_perPos.at(350).at(0).size() << " erster wert " << data.totalRawRelKD_perPos.at(350).at(0).at(0) <<  std::endl;
 
 		//count number of samples which are valid (not nan)
 // 		std::map<int, std::vector<int>> numberOfKDs;
@@ -540,6 +543,7 @@ namespace processing {
 		std::map<int, std::vector<double>> pvaluesIdx;
         int numPValues = 0;
         for(int pos1 = param.seqBegin; pos1 <= param.seqEnd; ++pos1) {
+
             if(data.medianExpKappaBound_perBase.find(pos1) != data.medianExpKappaBound_perBase.end()
                     && data.medianExpKappaUnbound_perBase.find(pos1) != data.medianExpKappaUnbound_perBase.end()
                     && data.totalRelKD_perPos.find(pos1) != data.totalRelKD_perPos.end())
@@ -614,6 +618,11 @@ namespace processing {
                             double median = std::numeric_limits<double>::quiet_NaN();
                             //double perc95;
                             //double perc5;
+
+                            if(pos1 == 350) {
+                                std::cout << "350 halt "<< data.numberOfKDs[pos1][mut]<< std::endl;
+
+                            }
 
                             if(data.numberOfKDs[pos1][mut] >= param.minNumberEstimatableKDs) {
                                 int numberOfKdsIncludingUpperLower = data.numberOfKDs.at(pos1).at(mut);

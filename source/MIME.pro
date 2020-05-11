@@ -6,11 +6,15 @@
 
 QT       += core gui svg
 
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+#greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 QMAKE_CXXFLAGS += -std=c++11
 TARGET = MIMEAnTo
 TEMPLATE = app
+#QMAKE_CC = gcc-9
+#QMAKE_CXX = g++-9
+#QMAKE_LINK = g++9
+LIBS += -L/Users/msmith/homebrew/Cellar/boost/1.72.0/lib
 
 
 SOURCES += main.cpp\
@@ -38,6 +42,8 @@ HEADERS  += mimemainwindow.hpp \
 FORMS    += mimemainwindow.ui
 
 #QMAKE_CXXFLAGS += -std=c++11
+
+INCLUDEPATH += /Users/msmith/homebrew/Cellar/boost/1.72.0/include
 
 LIBS += -lboost_system -lboost_filesystem -lboost_iostreams
 
