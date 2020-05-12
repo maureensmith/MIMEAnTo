@@ -11,6 +11,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 QMAKE_CXXFLAGS += -std=c++11
 TARGET = MIMEAnTo
 TEMPLATE = app
+LIBS += -L/Users/msmith/homebrew/Cellar/boost/1.72.0/lib
 
 
 SOURCES += main.cpp\
@@ -39,8 +40,9 @@ FORMS    += mimemainwindow.ui
 
 #QMAKE_CXXFLAGS += -std=c++11
 
-LIBS += -lboost_system -lboost_filesystem -lboost_iostreams
+INCLUDEPATH += /Users/msmith/homebrew/Cellar/boost/1.72.0/include
 
+LIBS += -lboost_system -lboost_filesystem -lboost_iostreams
 
 RESOURCES += \
     icons.qrc
