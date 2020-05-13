@@ -350,7 +350,7 @@ namespace processing {
         //clear already computed results
         data.clearRawKDCriteria();
 
-        utils::sampleContainer::iterator boundIt, unboundIt, wtBoundIt, wtUnboundIt;
+        utils::sampleContainer::iterator boundIt, unboundIt;
 		
 		//reserve space for upperbound of possible experiments (otherwise it would need O(vecSize) everytime it's reallocating)
 		std::size_t maximalVecSize = (param.seqEnd-param.seqBegin+1)*(data.bound.size());
@@ -377,7 +377,7 @@ namespace processing {
 
         int numberOfExp = 0;
         for(boundIt=data.bound.begin(), unboundIt=data.unbound.begin(); boundIt != data.bound.end(); ++boundIt, ++unboundIt) {
-            if((*boundIt).library != 0) {
+            if((*boundIt).library != 0 && (*boundIt).active)  {
                 ++numberOfExp;
                 int boundBarcode = (*boundIt).barcode;
                 int unboundBarcode = (*unboundIt).barcode;
@@ -388,20 +388,20 @@ namespace processing {
                 ioTools::readExperimentFile(boundBarcode, expDir+"/2d", boundCountsPP);
                 ioTools::readExperimentFile(unboundBarcode, expDir+"/2d", unboundCountsPP);
 
-                //if errors are considered indipendently for each sample: find respective barcode of wildtype
+                //if errors are considered independently for each sample: find respective barcode of wildtype
                 int wtBoundBarcode = 0;
                 int wtUnboundBarcode = 0;
-                //if(!param.joinErrors) {
-                    for(wtBoundIt=data.bound.begin(); wtBoundIt != data.bound.end(); ++wtBoundIt)
+
+                    for(auto wtBoundIt=data.bound.begin(); wtBoundIt != data.bound.end(); ++wtBoundIt)
                     {
                         if((*wtBoundIt).library == 0 && (*wtBoundIt).name == (*boundIt).name)
                             wtBoundBarcode = (*wtBoundIt).barcode;
                     }
-                    for(wtUnboundIt=data.unbound.begin(); wtUnboundIt != data.unbound.end(); ++wtUnboundIt) {
+                    for(auto wtUnboundIt=data.unbound.begin(); wtUnboundIt != data.unbound.end(); ++wtUnboundIt) {
                         if((*wtUnboundIt).library == 0 && (*wtUnboundIt).name == (*unboundIt).name)
                             wtUnboundBarcode = (*wtUnboundIt).barcode;
                     }
-                //}
+
 
                 //first count positions, normalize per experiment and add afterwards to vector
                 utils::WeightPerPosPair weightPerPosPairSingleExpBound;
