@@ -308,7 +308,8 @@ namespace utils {
 			}
 			
 			rateArray& getValues(int pos1, int pos2) {
-				return ratesPerPosPair[std::make_pair(pos1,pos2)];
+                //TODO refactor: prüfen ob es existiert, sonst knallts?
+                return ratesPerPosPair[std::make_pair(pos1,pos2)];
 			}
 			
 			int size() {
@@ -392,6 +393,7 @@ namespace utils {
 		//reference sequence (1. pos, 2. A=1, C=2, G=3, T=4)
 		refMap ref;
 		
+        //TODO refactor: dna weg
 		//barcodes for wildtype dna, bound and unbound libraries
 		sampleContainer dna, bound, unbound;
 
@@ -530,6 +532,7 @@ namespace utils {
         }
 
         void clearRawKDCriteria() {
+            clearMutRates();
             clearNumSeq();
             clearPositionWeights();
             clearSignal2Noise();
