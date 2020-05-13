@@ -3,6 +3,7 @@
 #include <iostream>
 namespace utils {
 
+    //TODO: unnötig, nur bound und unbound
 	SampleType getSampleTypeFromString(std::string& s) {
 		SampleType t = EMPTY;
 		std::transform(s.begin(), s.end(), s.begin(), ::tolower);

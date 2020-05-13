@@ -30,26 +30,28 @@ namespace processing {
         //count all sequences for a pair combination
         weightPos.add(pos1, pos2, seqSum);
         counts.divide(numWtWt);
+        //TODO refactor: adding?? wieso nehme ich hier den mean von allen samples? joining error sollte sein: median aus allen resamplings
         expRatesFalseDetect.add(pos1, pos2, counts);
 
         expFalseDetectPerSample[barcode].add(pos1, pos2, counts);
         weightsPerSample[barcode].add(pos1, pos2, seqSum);
     }
 
-    void getSingleErrorsAndWeights(const string& expDir, utils::Parameter& param, utils::refMap& ref, utils::sampleContainer& samples,
+    //TODO refactor: Single??? Nee. Außerdem aufteilen in eine funktion pro Methode
+    void getSingleErrorsAndWeights(const string& expDir, utils::Parameter& param, utils::refMap& ref,
                                   utils::WeightPerPosPair& weightPos, std::map<int, utils::WeightPerPosPair>& weightsPerSample,
                                   utils::RatesPerPosPair& expRatesFalseDetect, std::map<int, utils::RatesPerPosPair>& expFalseDetectPerSample,
                                    std::vector<int>& barcodes)
     {
-        utils::sampleContainer::iterator sampleIt;
+        //utils::sampleContainer::iterator sampleIt;
         int numberOfExp = 0;
 
-        //for each experiment pair with wildtype(library=0)
-        for(sampleIt=samples.begin(); sampleIt != samples.end(); ++sampleIt) {
-            //for errors only exermine wt samples (lib = 0)
-            if((*sampleIt).library == 0) {
+        for(auto barcode : barcodes) {
+       // TODO weg, wurde umgebaut //for each experiment pair with wildtype(library=0)
+       // for(sampleIt=samples.begin(); sampleIt != samples.end(); ++sampleIt) {
+       //     //for errors only exermine wt samples (lib = 0)
+       //     if((*sampleIt).library == 0) {
                 ++numberOfExp;
-                int barcode = (*sampleIt).barcode;
                 utils::countsPerPosPair countsPP;
                 ioTools::readExperimentFile(barcode, expDir+"/2d", countsPP);
 
@@ -67,9 +69,11 @@ namespace processing {
                     }
                 }
                 weightsPerSample[barcode].normalize();
-                barcodes.push_back(barcode);
-            }
+       //         barcodes.push_back(barcode);
+       //     }
         }
+
+        //TODO refactor weg???
         // average Rate of all experiments
         expRatesFalseDetect.divide(numberOfExp);
 
@@ -121,6 +125,9 @@ namespace processing {
                     if(!(sumsPerSample_perBase[barcode][i]).empty())
                     {   
                         medians[i] = utils::getMedian(sumsPerSample_perBase[barcode][i]);
+                    } else
+                    {
+                        medians[i] = 0;
                     }
                     //TODO auskommentiert?
                     sumsPerSample_perBase[barcode][i].clear();
@@ -144,6 +151,8 @@ namespace processing {
                 if(wtBase1 != mnucl) {
                     int idx = 4*(mnucl-1)+wtBase2-1;
                     if(countvalues[idx] > 0) {
+                        //TODO war vorher ja der mean aller samples für join (glaub ich), also besser unten hin tun für über alle samples gelaufen wird
+                        //nee...was soll das sein?
                         sums_perBase[i].insert(countvalues[idx]);
                          totalSum_perBase[i] += countvalues[idx];
                     }
@@ -170,16 +179,41 @@ namespace processing {
                     if(wtBase1 != mnucl) {
                         int idx = 4*(mnucl-1)+wtBase2-1;
                         if(countvalues[idx] > 0 && !std::isnan(countvalues[idx]))
+                            //TODO refactor: warum multiset?? sollte ja bloß ein value drin stehen oder?
                             sumsPerSample_perBase[barcode][i].insert(countvalues[idx]);
                         sum += countvalues[idx];
+                        //std::cout << pos1 <<" "<<pos2 << " " << barcode << " Multiset " << i << std::endl;
                         ++i;
+
                     }
+
                 }
                 if(sum > 0)
                     sumsPerSample[barcode].insert(sum);
             }
         }
     }
+
+    std::vector<int> getUniqueWildTypeBarcodes(utils::sampleContainer& samples) {
+       std::vector<int> wtBarcodes;
+       //only uniquebarcodes: in case a barcode for the wildtype is used for different mut barcodes,
+       //it appears more often in the vector (to be able to iterate over mut and wt simultaneously)
+       std::cout << "Barcodes "<< std::endl;
+       for(auto sampleIt=samples.begin(); sampleIt != samples.end(); ++sampleIt) {
+           //for errors only exermine wt samples (lib = 0)
+           if((*sampleIt).library == 0) {
+               wtBarcodes.push_back((*sampleIt).barcode);
+               std::cout << (*sampleIt).barcode << " " << std::endl;
+           }
+       }
+
+       std::sort(wtBarcodes.begin(), wtBarcodes.end());
+       wtBarcodes.erase( unique( wtBarcodes.begin(), wtBarcodes.end() ), wtBarcodes.end() );
+       std::cout<< "unique barcodes " << std::endl;
+       for(auto b : wtBarcodes)
+           std::cout << b << " " << std::endl;
+       return wtBarcodes;
+   }
 
     void estimateError(const string& expDir, utils::Parameter& param, utils::DataContainer& data) {
 		std::cout << "Estimate Error...." << std::endl;
@@ -202,19 +236,19 @@ namespace processing {
         std::map<int, utils::RatesPerPosPair> expFalseDetectPerSampleUnbound;
 
         //barcodes wor the wildtyp samples for easier iteration
-        std::vector<int> boundBarcodes;
-        std::vector<int> unboundBarcodes;
+        std::vector<int> boundBarcodes = getUniqueWildTypeBarcodes(data.bound);
+        std::vector<int> unboundBarcodes = getUniqueWildTypeBarcodes(data.unbound);
 
-        getSingleErrorsAndWeights(expDir, param, data.ref, data.bound, weightPosBound, weightsPerSampleBound, expRatesFalseDetectBound, expFalseDetectPerSampleBound, boundBarcodes);
-        getSingleErrorsAndWeights(expDir, param, data.ref, data.unbound, weightPosUnbound, weightsPerSampleUnbound, expRatesFalseDetectUnbound, expFalseDetectPerSampleUnbound, unboundBarcodes);
+        getSingleErrorsAndWeights(expDir, param, data.ref, weightPosBound, weightsPerSampleBound, expRatesFalseDetectBound, expFalseDetectPerSampleBound, boundBarcodes);
+        getSingleErrorsAndWeights(expDir, param, data.ref, weightPosUnbound, weightsPerSampleUnbound, expRatesFalseDetectUnbound, expFalseDetectPerSampleUnbound, unboundBarcodes);
 
-        //only uniquebarcodes: in case a barcode for the wildtype is used for different mut barcodes,
-        //it appears more often in the vector (to be able to iterate over mut and wt simultaneously)
-        std::sort(boundBarcodes.begin(), boundBarcodes.end());
-        boundBarcodes.erase( unique( boundBarcodes.begin(), boundBarcodes.end() ), boundBarcodes.end() );
+//        //only uniquebarcodes: in case a barcode for the wildtype is used for different mut barcodes,
+//        //it appears more often in the vector (to be able to iterate over mut and wt simultaneously)
+//        std::sort(boundBarcodes.begin(), boundBarcodes.end());
+//        boundBarcodes.erase( unique( boundBarcodes.begin(), boundBarcodes.end() ), boundBarcodes.end() );
 
-        std::sort(unboundBarcodes.begin(), unboundBarcodes.end());
-        unboundBarcodes.erase( unique( unboundBarcodes.begin(), unboundBarcodes.end() ), unboundBarcodes.end() );
+//        std::sort(unboundBarcodes.begin(), unboundBarcodes.end());
+//        unboundBarcodes.erase( unique( unboundBarcodes.begin(), unboundBarcodes.end() ), unboundBarcodes.end() );
 
 
 
@@ -347,6 +381,7 @@ namespace processing {
                 ++numberOfExp;
                 int boundBarcode = (*boundIt).barcode;
                 int unboundBarcode = (*unboundIt).barcode;
+                std::cout <<  (*boundIt).name << " " << (*boundIt).active << std::endl;
 
                 utils::countsPerPosPair boundCountsPP;
                 utils::countsPerPosPair unboundCountsPP;
@@ -375,8 +410,9 @@ namespace processing {
                 //only consider data in the given interval
                 //#pragma omp parallel for schedule(guided, 10) default(none) shared(std::cout, expDir, param, data, maximalVecSize) private(boundIt, unboundIt)
                 for(int pos1 = param.seqBegin; pos1 <= param.seqEnd; ++pos1) {
-                    if(boundCountsPP.find(pos1) != boundCountsPP.end() && unboundCountsPP.find(pos1) != unboundCountsPP.end()) {
+                    if(boundCountsPP.find(pos1) != boundCountsPP.end() && unboundCountsPP.find(pos1) != unboundCountsPP.end()) {                  
                     if(numberOfExp == 1) {
+                        std::cout << "Hallo "<< boundBarcode << std::endl;
                         data.signal2noiseBound_perPos[pos1].resize(3);
                         data.signal2noiseUnbound_perPos[pos1].resize(3);
 
@@ -404,26 +440,6 @@ namespace processing {
 							
 							int wtBase1 = data.ref[pos1];
 							int wtBase2 = data.ref[pos2];
-
-                            //für später
-//							if(param.virion) {
-	
-//								wtErrorCorrection(boundCounts, data.wtErrors[(*boundIt).barcode], pos1, pos2, data, counts1dBound[(*boundIt).barcode][pos1]);
-
-//								int dev = wtErrorCorrection(unboundCounts, data.wtErrors[(*unboundIt).barcode], pos1, pos2, data, counts1dUnbound[(*unboundIt).barcode][pos1]);
-// 								if(dev > 0)
-// 									++moreZero;
-// 								else if(dev <0)
-// 									++lessZero;
-// 								else
-// 									std::cout << "dev " << dev << std::endl;
-								
-// 								if(pos1 == 337)
-// 									wtBase1 = 1;
-// 								if(pos2 == 337)
-// 									wtBase2 = 1;
-
-//							}
 							
 							//counts of Wt - Wt
 							int boundNumWtWt = boundCounts[(wtBase1-1)*4+wtBase2-1];
@@ -451,6 +467,7 @@ namespace processing {
                                         double noiseBound;
                                         double noiseUnbound;
 
+                                        //TODO refactor: error joinen in dem median von allen samples genommen wird
                                         if(param.joinErrors)
                                         {
                                             noiseBound = data.medianExpKappaBound_perBase[pos1][i];
@@ -531,19 +548,17 @@ namespace processing {
         //delete old values before computing
         data.clearKDQualityCriteria();
         data.totalRelKD_perPos = data.totalRawRelKD_perPos;
-        std::cout << data.totalRawRelKD_perPos.at(350).at(0).size() << " erster wert " << data.totalRawRelKD_perPos.at(350).at(0).at(0) <<  std::endl;
 
 		//count number of samples which are valid (not nan)
 // 		std::map<int, std::vector<int>> numberOfKDs;
 		std::map<int, std::vector<int>> numberOfKDs_smallerZero;
 		std::map<int, std::vector<int>> numberOfKDs_greaterZero;
 
-		
+        //TODO: refactor: wirklich correction über ALLE pvalues?
 		std::vector<double> pvalues;
 		std::map<int, std::vector<double>> pvaluesIdx;
         int numPValues = 0;
         for(int pos1 = param.seqBegin; pos1 <= param.seqEnd; ++pos1) {
-
             if(data.medianExpKappaBound_perBase.find(pos1) != data.medianExpKappaBound_perBase.end()
                     && data.medianExpKappaUnbound_perBase.find(pos1) != data.medianExpKappaUnbound_perBase.end()
                     && data.totalRelKD_perPos.find(pos1) != data.totalRelKD_perPos.end())
@@ -552,12 +567,12 @@ namespace processing {
 
                 data.lowerLimitsKD_perPos[pos1].resize(3);
                 data.upperLimitsKD_perPos[pos1].resize(3);
-                pvaluesIdx[pos1].resize(3);
+                pvaluesIdx[pos1].resize(3, std::numeric_limits<double>::quiet_NaN());
                 data.numberOfKDs[pos1].resize(3);
                 numberOfKDs_smallerZero[pos1].resize(3);
                 numberOfKDs_greaterZero[pos1].resize(3);
-                data.pvalues[pos1].resize(3);
-                data.KDmedians[pos1].resize(3);
+                data.pvalues[pos1].resize(3, std::numeric_limits<double>::quiet_NaN());
+                data.KDmedians[pos1].resize(3, std::numeric_limits<double>::quiet_NaN());
 
                 std::vector<std::multiset<double>> validKdsForPercentile(3);
 
@@ -618,11 +633,6 @@ namespace processing {
                             double median = std::numeric_limits<double>::quiet_NaN();
                             //double perc95;
                             //double perc5;
-
-                            if(pos1 == 350) {
-                                std::cout << "350 halt "<< data.numberOfKDs[pos1][mut]<< std::endl;
-
-                            }
 
                             if(data.numberOfKDs[pos1][mut] >= param.minNumberEstimatableKDs) {
                                 int numberOfKdsIncludingUpperLower = data.numberOfKDs.at(pos1).at(mut);
@@ -714,6 +724,8 @@ namespace processing {
             }
 
 		}
+
+        std::cout << " pvalues size " << pvalues.size() << " " << numPValues<< std::endl;
 		
 		//P-value correction for multiple testing (Benjamini Hochberg method)
 		std::vector<size_t> sortedPValueIndices = utils::sort_indexes(pvalues);
@@ -728,50 +740,54 @@ namespace processing {
                 pvalueSmallerAlpha[sortedPValueIndices[i]] = pvalues[sortedPValueIndices[i]] < param.alpha;
 		}
 
-// 		for(int pos1 = param.seqBegin; pos1 <= param.seqEnd; ++pos1) 
-		data.positions.reserve(pvaluesIdx.size());
-		for(auto it = pvaluesIdx.begin(); it != pvaluesIdx.end(); ++it) {
-			int pos1 = it->first;
-			
-			
-			int wtBase1 = data.ref[pos1];
-			
-			bool maxAlpha = false;
-			size_t maxMut = 0;
-			double maxMedian = 0;
+        if( pvalues.size()> 0) {
+            data.positions.reserve(pvaluesIdx.size());
 
-			for(int mnucl=1, mut=0; mnucl<5 && mut<3; ++mnucl) {
-				if(wtBase1 != mnucl) {    
-					if(!std::isnan(pvaluesIdx[pos1][mut])) {
-						
-						data.pvalues[pos1][mut] = pvalues[pvaluesIdx[pos1][mut]];
-						
-// 						find maximum median, if medians < alpha are existant, consider only those. if not consider all
-                        if(!(data.totalRelKD_perPos[pos1][mut]).empty())
-                            data.KDmedians[pos1][mut] = utils::getPercentile(data.totalRelKD_perPos[pos1][mut], 50);                      
-						double currentMedian = abs(log2(data.KDmedians[pos1][mut]));
-						bool isAlpha = pvalueSmallerAlpha[pvaluesIdx[pos1][mut]];
-                        //ignore in virion cases where wt=A and mut=G
-						if((!param.virion || !(wtBase1 == 1 && mnucl == 3)) && ((maxMedian < currentMedian && maxAlpha == isAlpha) || (!maxAlpha && isAlpha))) {
-//						if((maxMedian < currentMedian && maxAlpha == isAlpha) || (!maxAlpha && isAlpha)) {
-							maxAlpha = isAlpha;
-							maxMut = mnucl;
-							maxMedian = currentMedian;
-						}
-					} else {
-						data.pvalues[pos1][mut] = std::numeric_limits<double>::quiet_NaN();
-						data.KDmedians[pos1][mut] = std::numeric_limits<double>::quiet_NaN();
-					}
-					++mut;
-				}
-			}			
+            for(auto it = pvaluesIdx.begin(); it != pvaluesIdx.end(); ++it) {
+                int pos1 = it->first;
 
-			if(maxMut > 0) {
-				
-				data.maxMut[pos1] = maxMut;
-				//consider only valid positions
-				data.positions.push_back(pos1);				
-			}	
-		}	
-	}
+                int wtBase1 = data.ref[pos1];
+
+                bool maxAlpha = false;
+                size_t maxMut = 0;
+                double maxMedian = 0;
+
+                for(int mnucl=1, mut=0; mnucl<5 && mut<3; ++mnucl) {
+                    if(wtBase1 != mnucl) {
+                        if(!std::isnan(pvaluesIdx[pos1][mut])) {
+                            data.pvalues[pos1][mut] = pvalues[pvaluesIdx[pos1][mut]];
+
+    // 						find maximum median, if medians < alpha are existant, consider only those. if not consider all
+                            if(!(data.totalRelKD_perPos[pos1][mut]).empty())
+                                data.KDmedians[pos1][mut] = utils::getPercentile(data.totalRelKD_perPos[pos1][mut], 50);
+                            double currentMedian = abs(log2(data.KDmedians[pos1][mut]));
+                            bool isAlpha = pvalueSmallerAlpha[pvaluesIdx[pos1][mut]];
+                            //ignore in virion cases where wt=A and mut=G
+                            if((!param.virion || !(wtBase1 == 1 && mnucl == 3)) && ((maxMedian < currentMedian && maxAlpha == isAlpha) || (!maxAlpha && isAlpha))) {
+    //						if((maxMedian < currentMedian && maxAlpha == isAlpha) || (!maxAlpha && isAlpha)) {
+                                maxAlpha = isAlpha;
+                                maxMut = mnucl;
+                                maxMedian = currentMedian;
+                            }
+                        } else {
+                            data.pvalues[pos1][mut] = std::numeric_limits<double>::quiet_NaN();
+                            data.KDmedians[pos1][mut] = std::numeric_limits<double>::quiet_NaN();
+                        }
+                        ++mut;
+                    }
+                }
+
+                if(maxMut > 0) {
+
+                    data.maxMut[pos1] = maxMut;
+                    //consider only valid positions
+                    data.positions.push_back(pos1);
+                }
+            } // pvalue index iteration end
+        }// end if number of pvalues > 0
+        else
+        {
+            std::cout << "Oh, no evaluable data !" << std::endl;
+        }
+    } // apply quality criteria end
 }
