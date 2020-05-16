@@ -198,20 +198,15 @@ namespace processing {
        std::vector<int> wtBarcodes;
        //only uniquebarcodes: in case a barcode for the wildtype is used for different mut barcodes,
        //it appears more often in the vector (to be able to iterate over mut and wt simultaneously)
-       std::cout << "Barcodes "<< std::endl;
        for(auto sampleIt=samples.begin(); sampleIt != samples.end(); ++sampleIt) {
            //for errors only exermine wt samples (lib = 0)
            if((*sampleIt).library == 0) {
                wtBarcodes.push_back((*sampleIt).barcode);
-               std::cout << (*sampleIt).barcode << " " << std::endl;
            }
        }
 
        std::sort(wtBarcodes.begin(), wtBarcodes.end());
        wtBarcodes.erase( unique( wtBarcodes.begin(), wtBarcodes.end() ), wtBarcodes.end() );
-       std::cout<< "unique barcodes " << std::endl;
-       for(auto b : wtBarcodes)
-           std::cout << b << " " << std::endl;
        return wtBarcodes;
    }
 
@@ -381,8 +376,6 @@ namespace processing {
                 ++numberOfExp;
                 int boundBarcode = (*boundIt).barcode;
                 int unboundBarcode = (*unboundIt).barcode;
-                std::cout <<  (*boundIt).name << " " << (*boundIt).active << std::endl;
-
                 utils::countsPerPosPair boundCountsPP;
                 utils::countsPerPosPair unboundCountsPP;
                 ioTools::readExperimentFile(boundBarcode, expDir+"/2d", boundCountsPP);
@@ -412,7 +405,6 @@ namespace processing {
                 for(int pos1 = param.seqBegin; pos1 <= param.seqEnd; ++pos1) {
                     if(boundCountsPP.find(pos1) != boundCountsPP.end() && unboundCountsPP.find(pos1) != unboundCountsPP.end()) {                  
                     if(numberOfExp == 1) {
-                        std::cout << "Hallo "<< boundBarcode << std::endl;
                         data.signal2noiseBound_perPos[pos1].resize(3);
                         data.signal2noiseUnbound_perPos[pos1].resize(3);
 
@@ -725,8 +717,6 @@ namespace processing {
 
 		}
 
-        std::cout << " pvalues size " << pvalues.size() << " " << numPValues<< std::endl;
-		
 		//P-value correction for multiple testing (Benjamini Hochberg method)
 		std::vector<size_t> sortedPValueIndices = utils::sort_indexes(pvalues);
 
