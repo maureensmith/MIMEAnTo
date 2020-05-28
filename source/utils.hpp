@@ -338,7 +338,6 @@ namespace utils {
 	
 	typedef std::set<Sample, samplecomp> sampleContainer;
 	
-	//TODO: parameter durch eingabe datei setzen lassen
     struct Parameter {
 
         //coeffcient threshold at what a warning is given that the data looks strange
@@ -372,7 +371,7 @@ namespace utils {
         double minMutRate = 4.0;
 
         //Plot values for the KD plots
-		int plotStartRegion = 70;
+		int plotStartRegion = 1;
 		int plotEndRegion = 110;
 
         int plotYAxisFrom = -4;
