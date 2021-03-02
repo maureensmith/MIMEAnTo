@@ -4,7 +4,7 @@
 #include <iostream>
 #include "utils.hpp"
 #include "ioTools.hpp"
-#include "plot.hpp"
+//#include "plot.hpp"
 #include "processing.hpp"
 #include "mimeexception.hpp"
 
@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 
     utils::DataContainer data;
     utils::Parameter parameter;
-
+    cout << "Reading project file in " << argv[1] << std::endl;
     //std::string projectFile = argv[1];
     // load in the sample data
     if(ioTools::dirExists(argv[1])) {
@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
 
 
     //TODO errors rausschreiben?
-    ioTools::writeErrorEstimates(parameter.resultDir, data);
+   // ioTools::writeErrorEstimates(parameter.resultDir, data);
 
     //TODO plot Error
 
@@ -193,29 +193,29 @@ int main(int argc, char *argv[])
 
     /*** plot Kds ***/
     //TODO at moment not possible. Extra gnuplot call with the gp files
-    try {
-        plot::plotAllEffects(parameter.resultDir, parameter, data, plot::PDF, fileName_suffix);
-    }catch(MIME_GnuplotNotFoundException& e)
-    {
-        std::string errorMsg ="Save Kd plot: \n" + e.message();
-        ioTools::writeErrorLog(parameter.resultDir, errorMsg);
-        std::cerr << errorMsg << std::endl;
-        return 8;
-    }
-    catch(MIME_PathToExecutableNotFoundException& e)
-    {
-        std::string errorMsg ="Save Kd plot: \n" + e.message();
-        ioTools::writeErrorLog(parameter.resultDir, errorMsg);
-        std::cerr << errorMsg << std::endl;
-        return 8;
-    }
-    catch(std::exception& e)
-    {
-        std::string errorMsg = "Save Kd plot: \nSomething went wrong with plot. The error is logged in the file tmp/gnuplotError.log\n" + std::string(e.what()) + "\n";
-        ioTools::writeErrorLog(parameter.resultDir, errorMsg);
-        std::cerr << errorMsg << std::endl;
-        return 8;
-    }
+//    try {
+//        plot::plotAllEffects(parameter.resultDir, parameter, data, plot::PDF, fileName_suffix);
+//    }catch(MIME_GnuplotNotFoundException& e)
+//    {
+//        std::string errorMsg ="Save Kd plot: \n" + e.message();
+//        ioTools::writeErrorLog(parameter.resultDir, errorMsg);
+//        std::cerr << errorMsg << std::endl;
+//        return 8;
+//    }
+//    catch(MIME_PathToExecutableNotFoundException& e)
+//    {
+//        std::string errorMsg ="Save Kd plot: \n" + e.message();
+//        ioTools::writeErrorLog(parameter.resultDir, errorMsg);
+//        std::cerr << errorMsg << std::endl;
+//        return 8;
+//    }
+//    catch(std::exception& e)
+//    {
+//        std::string errorMsg = "Save Kd plot: \nSomething went wrong with plot. The error is logged in the file tmp/gnuplotError.log\n" + std::string(e.what()) + "\n";
+//        ioTools::writeErrorLog(parameter.resultDir, errorMsg);
+//        std::cerr << errorMsg << std::endl;
+//        return 8;
+//    }
 
     // save Kds
     std::string filename;

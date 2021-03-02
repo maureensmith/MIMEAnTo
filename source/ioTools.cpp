@@ -1,19 +1,28 @@
 #include "ioTools.hpp"
 
-//#include <boost/regex.hpp>
-#include <boost/range/algorithm/transform.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/algorithm/string.hpp>
+#include <algorithm>
+#include<filesystem>
+#include <fstream>
 #include <sstream>
 #include <iostream>
 #include <iterator>
 #include <iomanip>
-#include <boost/filesystem.hpp>
-#include "boost/filesystem/fstream.hpp"
 #include <mimeexception.hpp>
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace ioTools {
+
+    std::vector<std::string> split(const std::string& s, char delimiter)
+    {
+        std::vector<std::string> tokens;
+        std::string token;
+        std::istringstream tokenStream(s);
+        while (std::getline(tokenStream, token, delimiter))
+        {
+            tokens.push_back(token);
+        }
+        return tokens;
+    }
 
     std::string createDir(const std::string& resDir) {
         fs::path resultDirPath(resDir);
@@ -25,7 +34,7 @@ namespace ioTools {
 
     void printMapOfVector(utils::ratesPerPos& mapOfVector, const string& filename, const string& resultDir) {
         fs::path file(resultDir +"/"+ filename);
-        fs::ofstream outfile(file.string());
+        std::ofstream outfile(file.string());
         if(outfile.good()) {
             for(utils::ratesPerPos::iterator posIt = mapOfVector.begin(); posIt != mapOfVector.end(); ++posIt) {
                 outfile << posIt->first;
@@ -40,7 +49,7 @@ namespace ioTools {
 
     void printMapOfDouble(utils::ratePerPos& ratePerPos, const string& filename, const string& resultDir) {
         fs::path file(resultDir +"/"+ filename);
-        fs::ofstream outfile(file.string());
+        std::ofstream outfile(file.string());
         if(outfile.good()) {
             for(utils::ratePerPos::iterator posIt = ratePerPos.begin(); posIt != ratePerPos.end(); ++posIt) {
                 outfile << posIt->first << "\t" << posIt->second << std::endl;
@@ -51,7 +60,7 @@ namespace ioTools {
 
     void printMapOfVectorOfVector(utils::ratesPerPosPerMut& ratesPerPosPerMut, const string& filename, const string& resultDir) {
         fs::path file(resultDir +"/"+ filename);
-        fs::ofstream outfile(file.string());
+        std::ofstream outfile(file.string());
         if(outfile.good()) {
             for(utils::ratesPerPosPerMut::iterator posIt = ratesPerPosPerMut.begin(); posIt != ratesPerPosPerMut.end(); ++posIt) {
                 for(int i=0; i<3; ++i) {
@@ -75,7 +84,7 @@ namespace ioTools {
     {
         createDir(resultDir+"/tmp");
         fs::path errorLogFile(resultDir+"/tmp/error.log");
-        fs::ofstream outfile(errorLogFile.string(), std::ofstream::out | std::ofstream::app);
+        std::ofstream outfile(errorLogFile.string(), std::ofstream::out | std::ofstream::app);
         if(outfile.good()) {
                 outfile << text << std::endl;
         }
@@ -92,7 +101,7 @@ namespace ioTools {
         fs::path refFile(refStr);
         if(fs::exists(refFile) && fs::is_regular_file(refFile)) {
             std::cout << "Read reference file..." << std::endl;
-            fs::ifstream infile(refFile.string());
+            std::ifstream infile(refFile.string());
             if (infile.good()) {
                 string line;
                 istringstream ss;
@@ -164,7 +173,7 @@ namespace ioTools {
         fs::path file(expDir+"/"+bc+".txt");
         if(fs::exists(file) && fs::is_regular_file(file))
         {
-            fs::ifstream infile(file.string());
+            std::ifstream infile(file.string());
             if (infile.good()) {
                 string line;
                 //Header
@@ -182,16 +191,18 @@ namespace ioTools {
                     getline(ss, pos2, '\t');
 
                     //read the read counts for the pair of psoitions
-                    std::vector<string> countsVec(istream_iterator<string>{ss}, istream_iterator<string>{});
+                    std::vector<std::string> countsVec(istream_iterator<string>{ss}, istream_iterator<string>{});
                     utils::rateArray counts(countsVec.size());
-                    boost::transform(countsVec, begin(counts), boost::lexical_cast<double, string>);
+                    std::transform(countsVec.begin(), countsVec.end(), std::begin(counts), [](const auto& val)
+                    {
+                        return std::stod(val);
+                    });
 
 //                    pair<int, int> posPair1(stoi(pos1), stoi(pos2));
 //                    pair<int, int> posPair2(stoi(pos2), stoi(pos1));
 
-                   countsPP[stoi(pos1)][stoi(pos2)] = counts;
+                   countsPP[std::stoi(pos1)][std::stoi(pos2)] = counts;
                    countsPP[stoi(pos2)][stoi(pos1)]= utils::reorderCovariationVector<utils::rateArray>(counts);
-
                 }
             } else {
                 throw MIME_NoSuchFileException(file.string());
@@ -208,21 +219,22 @@ namespace ioTools {
 		string p = std::to_string(pos);
 		fs::path posFile(expDir+"/"+bc+"/"+bc+"_"+p+".txt");
 		if(fs::exists(posFile) && fs::is_regular_file(posFile)) {
-            fs::ifstream infile(posFile.string());
+            std::ifstream infile(posFile.string());
 			if (infile.good()) {
 				string line;
 // 				istringstream ss;
 				while(getline(infile, line)) {
-					vector<string> splittedLine;
-					
-					boost::split(splittedLine, line, boost::is_any_of(","));
+					vector<string> splittedLine =  split(line, ',');
 					string pos2 = splittedLine[2];
 
 					// +4 to skip both positions and nucleotides
 					vector<string> countsStr(splittedLine.begin()+4, splittedLine.end());
 					utils::rateArray counts;
 					counts.resize(countsStr.size());
-                    boost::transform(countsStr, begin(counts), boost::lexical_cast<double, string>);
+                    std::transform(countsStr.begin(), countsStr.end(), std::begin(counts), [](const auto& val)
+                    {
+                        return std::stod(val);
+                    });
 					countsPP[stoi(pos2)] = counts;
 					
 				}
@@ -239,7 +251,7 @@ namespace ioTools {
         fs::path posFile(expDir+"/"+bc+".txt");
 //        fs::path posFile(expDir+"/tg"+bc+"_1D.txt");
         if(fs::exists(posFile) && fs::is_regular_file(posFile)) {
-            fs::ifstream infile(posFile.string());
+            std::ifstream infile(posFile.string());
             if (infile.good()) {
                 string line;
                 //first line = header
@@ -248,14 +260,15 @@ namespace ioTools {
 //                 while(getline(infile, line) && pos!=actPos) {
                 while(getline(infile, line)) {
 
-                    vector<string> splittedLine;
-                    boost::split(splittedLine, line, boost::is_any_of("\t"));
+                    vector<string> splittedLine = split(line, '\t');
                     actPos = std::stoi(splittedLine[0]);
                     counts[actPos].resize(4);
 
                 // +1 to skip the position
-                    std::transform(splittedLine.begin()+1, splittedLine.end(), begin(counts[actPos]), boost::lexical_cast<double, string>);
-
+                    std::transform(splittedLine.begin()+1, splittedLine.end(), std::begin(counts[actPos]), [](const auto& val)
+                    {
+                        return std::stod(val);
+                    });
                 }
             } else {
                 throw MIME_NoSuchFileException(posFile.string());
@@ -269,7 +282,7 @@ namespace ioTools {
         string bc = std::to_string(barcode);
         fs::path posFile(expDir+"/"+bc+".txt");;
         if(fs::exists(posFile) && fs::is_regular_file(posFile)) {
-            fs::ifstream infile(posFile.string());
+            std::ifstream infile(posFile.string());
             if (infile.good()) {
                 string line;
                 //first line = header
@@ -277,14 +290,15 @@ namespace ioTools {
                 int actPos = 0;
                 while(getline(infile, line)) {
 
-                    vector<string> splittedLine;
-                    boost::split(splittedLine, line, boost::is_any_of("\t"));
+                    vector<string> splittedLine = ioTools::split(line, '\t');
                     actPos = std::stoi(splittedLine[0]);
                     int wt = data.ref[actPos];
 
                     utils::rateArray counts(4);
-                    std::transform(splittedLine.begin()+1, splittedLine.begin()+5, begin(counts), boost::lexical_cast<double, string>);
-
+                    std::transform(splittedLine.begin()+1, splittedLine.end()+5, std::begin(counts), [](const auto& val)
+                    {
+                        return std::stod(val);
+                    });
 
                     double mutSum = 0.0;
                     for(int mut=0; mut < 3; ++mut) {
@@ -301,21 +315,22 @@ namespace ioTools {
         }
     }
 
+    /*
     void writeErrorEstimates(const string& resultDir, utils::DataContainer& data) {
         std::cout << "Write Error Estimates... " << std::endl;
-        std::string errorDir = createDir(resultDir+"/errors");
-        printMapOfVector(data.medianExpKappaBound_perBase, "errorEstimatesPerBaseSelected.csv", errorDir);
-        printMapOfVector(data.medianExpKappaUnbound_perBase, "errorEstimatesPerBaseNonselected.csv", errorDir);
+        std::string errorDir = ioTools::createDir(resultDir+"/errors");
+        ioTools::printMapOfVector(data.medianExpKappaBound_perBase, "errorEstimatesPerBaseSelected.csv", errorDir);
+        ioTools::printMapOfVector(data.medianExpKappaUnbound_perBase, "errorEstimatesPerBaseNonselected.csv", errorDir);
 //        printMapOfDouble(data.medianExpKappa_Total, "errorEstimatesTotal.csv", resultDir);
 //        std::map<int, std::map<int, double>> medianExpKappaTotal_perSampleSelected;
 
         for(auto sampleUnboundIt = data.medianExpKappaTotal_perSampleUnbound.begin(); sampleUnboundIt!=data.medianExpKappaTotal_perSampleUnbound.end(); ++sampleUnboundIt) {
             int unboundBarcode = sampleUnboundIt->first;
-            printMapOfDouble(data.medianExpKappaTotal_perSampleUnbound[unboundBarcode], "errorEstimatesTotal_nonselectedSample"+std::to_string(unboundBarcode)+".csv", errorDir);
-            printMapOfVector(data.medianExpKappaTotal_perBase_perSampleUnbound[unboundBarcode], "errorEstimatesTotalPerBase_nonselectedSample"+std::to_string(unboundBarcode)+".csv", errorDir);
+            ioTools::printMapOfDouble(data.medianExpKappaTotal_perSampleUnbound[unboundBarcode], "errorEstimatesTotal_nonselectedSample"+std::to_string(unboundBarcode)+".csv", errorDir);
+            ioTools::printMapOfVector(data.medianExpKappaTotal_perBase_perSampleUnbound[unboundBarcode], "errorEstimatesTotalPerBase_nonselectedSample"+std::to_string(unboundBarcode)+".csv", errorDir);
 
-            printMapOfDouble(data.perc25ExpKappaTotal_perSampleUnbound[unboundBarcode], "perc25ErrorTotal_nonselectedSample"+std::to_string(unboundBarcode)+".csv", errorDir);
-            printMapOfDouble(data.perc75ExpKappaTotal_perSampleUnbound[unboundBarcode], "perc75ErrorTotal_nonselectedSample"+std::to_string(unboundBarcode)+".csv", errorDir);
+            ioTools::printMapOfDouble(data.perc25ExpKappaTotal_perSampleUnbound[unboundBarcode], "perc25ErrorTotal_nonselectedSample"+std::to_string(unboundBarcode)+".csv", errorDir);
+            ioTools::printMapOfDouble(data.perc75ExpKappaTotal_perSampleUnbound[unboundBarcode], "perc75ErrorTotal_nonselectedSample"+std::to_string(unboundBarcode)+".csv", errorDir);
         }
 
         for(auto sampleBoundIt = data.medianExpKappaTotal_perSampleBound.begin(); sampleBoundIt!=data.medianExpKappaTotal_perSampleBound.end(); ++sampleBoundIt) {
@@ -327,24 +342,27 @@ namespace ioTools {
             printMapOfDouble(data.perc75ExpKappaTotal_perSampleBound[boundBarcode], "perc75ErrorTotal_selectedSample"+std::to_string(boundBarcode)+".csv", errorDir);
         }
     }
-    
+    */
+
     void readRatesPerPosition(utils::ratesPerPos& rates, const string& filename, const string& resultDir) {
         fs::path file(resultDir +"/"+ filename);
 
 	    if(fs::exists(file) && fs::is_regular_file(file)) {
-            fs::ifstream infile(file.string());
+            std::ifstream infile(file.string());
             if (infile.good()) {
                 rates.clear();
                 string line;
                 while(getline(infile, line)) {
 
-                    vector<string> splittedLine;
-                    boost::split(splittedLine, line, boost::is_any_of("\t"));
+                    vector<string> splittedLine = ioTools::split(line, '\t');
                     int pos = std::stoi(splittedLine[0]);
                     // +1 to skip both positions
                     vector<string> countsStr(splittedLine.begin()+1, splittedLine.end());
                     rates[pos].resize(countsStr.size());
-                    boost::transform(countsStr, begin(rates[pos]), boost::lexical_cast<double, string>);
+                    std::transform(countsStr.begin(), countsStr.end(), std::begin(rates[pos]), [](const auto& val)
+                    {
+                        return std::stod(val);
+                    });
                 }
             } else {
                 throw MIME_NoSuchFileException(file.string());
@@ -359,16 +377,15 @@ namespace ioTools {
         fs::path file(resultDir +"/"+ filename);
 
        if(fs::exists(file) && fs::is_regular_file(file)) {
-            fs::ifstream infile(file.string());
+            std::ifstream infile(file.string());
             if (infile.good()) {
                 errors.clear();
                 string line;
                 while(getline(infile, line)) {
 
-                    vector<string> splittedLine;
-                    boost::split(splittedLine, line, boost::is_any_of("\t"));
+                    vector<string> splittedLine = ioTools::split(line, '\t');
                     int pos = std::stoi(splittedLine[0]);
-                    double value = boost::lexical_cast<double>(splittedLine[1]);
+                    double value = std::stod(splittedLine[1]);
                     errors[pos] = value;
                 }
             } else {
@@ -382,20 +399,22 @@ namespace ioTools {
     void readVectorOfVectorPerPosition(utils::ratesPerPosPerMut& rates, const string& filename, const string& resultDir) {
         fs::path file(resultDir +"/"+ filename);
         if(fs::exists(file) && fs::is_regular_file(file)) {
-            fs::ifstream infile(file.string());
+            std::ifstream infile(file.string());
             rates.clear();
             if(infile.good()) {
                 string line;
                 while(getline(infile, line)) {
-                    vector<string> splittedLine;
-                    boost::split(splittedLine, line, boost::is_any_of("\t"));
+                    vector<string> splittedLine = ioTools::split(line, '\t');
                     int pos1 = std::stoi(splittedLine[0]);
                     int mut = std::stoi(splittedLine[1]);
                     //the vector has to be newly defined
                     if(mut == 0)
                         rates[pos1].resize(3);
                     (rates[pos1][mut]).resize(splittedLine.size()-2);
-                    std::transform(splittedLine.begin()+2, splittedLine.end(), (rates[pos1][mut]).begin(), boost::lexical_cast<double, string>);
+                    std::transform(splittedLine.begin()+2, splittedLine.end(), (rates[pos1][mut]).begin(), [](const auto& val)
+                    {
+                        return std::stod(val);
+                    });
                 }
             }
         }
@@ -441,11 +460,12 @@ namespace ioTools {
     }
 
 
-	
+	/*
     void writeRawKDValues(const string& resultDir, utils::DataContainer& data, const string& filename) {
         std::cout << "Write raw KD values... " << std::endl;
         printMapOfVectorOfVector(data.totalRawRelKD_perPos, filename, resultDir);
 	}
+
 	
 	void readRawKDValues(const string& resultDir, utils::DataContainer& data, const string& filename) {
 		std::cout << "Read raw KD values... " << std::endl;
@@ -453,10 +473,11 @@ namespace ioTools {
 	}
 
 
+
     void writeSignal2Noise(const string& resultDir, utils::DataContainer& data) {
         std::cout << "Write signal to noise ratio... " << std::endl;
-        printMapOfVectorOfVector(data.signal2noiseBound_perPos, "signal2NoiseRatioSelected.csv", resultDir);
-        printMapOfVectorOfVector(data.signal2noiseUnbound_perPos, "signal2NoiseRatioNonselected.csv", resultDir);
+        ioTools::printMapOfVectorOfVector(data.signal2noiseBound_perPos, "signal2NoiseRatioSelected.csv", resultDir);
+        ioTools::printMapOfVectorOfVector(data.signal2noiseUnbound_perPos, "signal2NoiseRatioNonselected.csv", resultDir);
     }
 
     void readSignal2Noise(const string& resultDir, utils::DataContainer& data) {
@@ -467,8 +488,8 @@ namespace ioTools {
 
     void writeMutRate(const string& resultDir, utils::DataContainer& data) {
         std::cout << "Write mutation rates... " << std::endl;
-        printMapOfVectorOfVector(data.mutRateBound_perPos, "mutRatesSelected.csv", resultDir);
-        printMapOfVectorOfVector(data.mutRateUnbound_perPos, "mutRatesNonselected.csv", resultDir);
+        ioTools::printMapOfVectorOfVector(data.mutRateBound_perPos, "mutRatesSelected.csv", resultDir);
+        ioTools::printMapOfVectorOfVector(data.mutRateUnbound_perPos, "mutRatesNonselected.csv", resultDir);
     }
 
     void readMutRate(const string& resultDir, utils::DataContainer& data) {
@@ -489,17 +510,20 @@ namespace ioTools {
         readRatesPerPosition(data.positionWeightsUnbound, "percentOfMaxCovNonselected.csv", resultDir);
     }
 
+
     void writeSequenceNumbers(const string& resultDir, utils::DataContainer& data) {
         std::cout << "Write coverage... " << std::endl;
         printMapOfVector(data.numSeqPerPosPairBound, "coverageSelected.csv", resultDir);
         printMapOfVector(data.numSeqPerPosPairUnbound, "coverageNonselected.csv", resultDir);
     }
 
+
     void readSequenceNumbers(const string& resultDir, utils::DataContainer& data) {
         std::cout << "Read coverage... " << std::endl;
         readRatesPerPosition(data.numSeqPerPosPairBound, "coverageSelected.csv", resultDir);
         readRatesPerPosition(data.numSeqPerPosPairUnbound, "coverageNonselected.csv", resultDir);
     }
+
 
     void writeRawKDCriteria(const string& resDir, utils::DataContainer& data, const string& filename) {
         std::string resultDir = createDir(resDir+"/KdResults");
@@ -510,6 +534,8 @@ namespace ioTools {
         writeSequenceNumbers(resultDir, data);
     }
 
+
+
     void readRawKDCriteria(const string& resDir, utils::DataContainer& data, const string& filename) {
         std::string resultDir(resDir+"/KdResults");
         data.clearRawKDCriteria();
@@ -519,7 +545,7 @@ namespace ioTools {
         readPositionWeights(resultDir, data);
         readSequenceNumbers(resultDir, data);
     }
-
+    */
 
 	
     std::string writePositionWiseKDEstimates(const string &resDir, utils::DataContainer& data, const string &filenamePrefix) {
@@ -531,7 +557,7 @@ namespace ioTools {
         if(!fs::is_directory(resultDir))
             fs::create_directory(resultDir);
         fs::path KDFile(resultDir.string()+"/"+filename+filenamePrefix+".csv");
-        fs::ofstream outfile(KDFile.string());
+        std::ofstream outfile(KDFile.string());
 		if(outfile.good()) {
             outfile << "pos1\twt base\tmax effect mut";
             outfile << "\tmedian mut A\tp-values mut A\t#resamplings mut A\t#lower estimates mut A\t#upper estimates mut A\t5. percentil mut A\t95. percentil mut A";
@@ -583,7 +609,7 @@ namespace ioTools {
         if(!fs::is_directory(resultDir))
             fs::create_directory(resultDir);
         fs::path KDFile(resultDir.string()+"/"+filename+filenamePrefix+".csv");
-        fs::ofstream outfile(KDFile.string());
+        std::ofstream outfile(KDFile.string());
         if(outfile.good()) {
             outfile << "pos1\twt base\tmax effect mut";
             outfile << "\tmedian Kd\tp-value\t#resamplings\t#lower estimates\t#upper estimates\t5. percentil\t95. percentil\t25. percentil\t75. percentil" << std::endl;
@@ -616,7 +642,7 @@ namespace ioTools {
         return KDFile.string();
     }
 
-
+    /*
 	bool readPositionWiseKDEstimates(const string &resultDir, utils::DataContainer& data) {
         string filename = "PositionWiseKdEstimates.csv";
         fs::path KDFile(resultDir+"/KdResults/"+filename);
@@ -661,7 +687,8 @@ namespace ioTools {
 		}
 		return successful;
 	}
-
+     */
+    /*
     string writeParameterFile(const string& resultDir, utils::Parameter& param, utils::DataContainer& data) {
         fs::path confFile(resultDir + "/project.txt");
         fs::ofstream outfile(confFile.string());
@@ -711,6 +738,8 @@ namespace ioTools {
         outfile.close();
         return confFile.string();
     }
+     */
+
 
     bool readParameterFile(const string& resultDir, utils::Parameter& param, utils::DataContainer& data) {
         fs::path confFile(resultDir);
@@ -724,12 +753,11 @@ namespace ioTools {
         data.bound.clear();
         data.unbound.clear();
         if(fs::exists(confFile) && fs::is_regular_file(confFile)) {
-            fs::ifstream infile(confFile.string());
+            std::ifstream infile(confFile.string());
             if(infile.good()) {
                 string line;
                 while(getline(infile, line)) {
-                    vector<string> splittedLine;
-                    boost::split(splittedLine, line, boost::is_any_of("\t"));
+                    vector<string> splittedLine = ioTools::split(line, '\t');
                     if(splittedLine[0] == "refSeqFile")
                         param.refFile = splittedLine[1];
                     else if(splittedLine[0] == "dataDir")
@@ -737,7 +765,7 @@ namespace ioTools {
 //                    else if(splittedLine[0] == "barcodeFile")
 //                        param.barcodeFile = splittedLine[1];
                     else if(splittedLine[0] == "alpha")
-                        param.alpha = boost::lexical_cast<double>(splittedLine[1]);
+                        param.alpha = std::stod(splittedLine[1]);
                     else if(splittedLine[0] == "cutValueBwd")
                         param.cutValueBwd = std::stoi(splittedLine[1]);
                     else if(splittedLine[0] == "cutValueFwd")
@@ -747,21 +775,21 @@ namespace ioTools {
                     else if(splittedLine[0] == "minNumberEstimatableKds")
                         param.minNumberEstimatableKDs = std::stoi(splittedLine[1]);
                     else if(splittedLine[0] == "minSignal2NoiseStrength")
-                        param.minSignal2NoiseStrength = boost::lexical_cast<double>(splittedLine[1]);
+                        param.minSignal2NoiseStrength = std::stod(splittedLine[1]);
                     else if(splittedLine[0] == "minMutRate")
-                        param.minMutRate = boost::lexical_cast<double>(splittedLine[1]);
+                        param.minMutRate = std::stod(splittedLine[1]);
                     else if(splittedLine[0] == "seqBegin")
                         param.seqBegin = std::stoi(splittedLine[1]);
                     else if(splittedLine[0] == "seqEnd")
                         param.seqEnd = std::stoi(splittedLine[1]);
                     else if(splittedLine[0] == "percOfMaxCov")
-                        param.weightThreshold = boost::lexical_cast<double>(splittedLine[1]);
+                        param.weightThreshold = std::stod(splittedLine[1]);
                     else if(splittedLine[0] == "joinErrors")
                          std::istringstream(splittedLine[1]) >> std::boolalpha >> param.joinErrors;
                     else if(splittedLine[0] == "plotYAxisFrom")
-                        param.plotYAxisFrom = boost::lexical_cast<double>(splittedLine[1]);
+                        param.plotYAxisFrom = std::stod(splittedLine[1]);
                     else if(splittedLine[0] == "plotYAxisTo")
-                        param.plotYAxisTo = boost::lexical_cast<double>(splittedLine[1]);
+                        param.plotYAxisTo = std::stod(splittedLine[1]);
                     else if(splittedLine[0] == "plotStartRegion")
                         param.plotStartRegion = std::stoi(splittedLine[1]);
                     else if(splittedLine[0] == "plotEndRegion")
@@ -775,7 +803,7 @@ namespace ioTools {
                         utils::Sample sample(splittedLine[2], std::stoi(splittedLine[1]), utils::UNBOUND, std::stoi(splittedLine[3]));
                         data.unbound.insert(sample);
                     }else if(splittedLine[0] == "signThreshold") {
-                        param.significanceThreshold = boost::lexical_cast<double>(splittedLine[1]);
+                        param.significanceThreshold = std::stod(splittedLine[1]);
                     }
 
 
@@ -807,8 +835,9 @@ namespace ioTools {
         return successful;
     }
 
+
      bool fileExists(const string& resultDir, const string& filename) {
-        return fileExists(resultDir + "/"+ filename);
+        return ioTools::fileExists(resultDir + "/"+ filename);
      }
 
      bool fileExists(const string& filename) {
@@ -828,9 +857,9 @@ namespace ioTools {
      }
 
      bool dirExists(const string& dirname) {
-         fs::path dir(dirname);
-         return (fs::exists(dir) && fs::is_directory(dir));
-     }
+        fs::path dir(dirname);
+        return (fs::exists(dir) && fs::is_directory(dir));
+    }
 
      bool removeFile(const string& filename) {
           fs::path file(filename);
