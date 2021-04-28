@@ -1,7 +1,12 @@
+# DEPRECATED
+
+The MIMEAnTo version 1.0 with GUI and plot outputs is no longer maintained. 
+Instead, use the console version at [MIMEAn2](https://github.com/maureensmith/MIMEAn2) to generate the tables and  [MIMEplot](https://github.com/maureensmith/MIMEplot) to plot the results.
+
 # MIMEAnTo
 Running MIMEAnTo
 -------------------
-Executables are available for Linux, Windows and Mac OS X. 
+
 The plots are created with gnuplot.
 
 In OS X a gnuplot executable is supplied within the MIMEAnTo bundle (downloaded from  http://ricardo.ecn.wfu.edu/pub/gnuplot/gnuplot-5.0.3-quartz.dmg). 
