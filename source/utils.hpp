@@ -378,7 +378,7 @@ namespace utils {
         int plotYAxisTo = 4;
 
         bool plotPValues = true;
-		// replace lower bounds for KDvalues  with median, otherwise with 5th and 95th percentile 
+		// replace lower bounds for KDvalues  with median, otherwise with 5th and 95th percentile
 //		bool putMedian = true;
 
 		std::string refFile;
