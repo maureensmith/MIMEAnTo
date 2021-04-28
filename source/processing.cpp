@@ -5,16 +5,9 @@
 #include <iterator>
 #include <sstream>
 #include <valarray>
-//#include <boost/filesystem.hpp>
-//#include "boost/filesystem/fstream.hpp"
-//#include <boost/algorithm/string/join.hpp>
-//#include <boost/regex.hpp>
-//#include <omp.h>
 
 //namespace fs = boost::filesystem;
 namespace processing {
-	
-	typedef map<pair<int, int>, string> basedistri2d;
 
 
 /****************** Error Estimation **************************************************/
