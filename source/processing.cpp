@@ -32,7 +32,8 @@ namespace processing {
         counts.divide(numWtWt);
         //TODO refactor: adding?? wieso nehme ich hier den mean von allen samples? joining error sollte sein: median aus allen resamplings
         expRatesFalseDetect.add(pos1, pos2, counts);
-
+        //TODO hier wird nicht geaddet wil getUniqueWildTypeBarcodes aufgerufen wurden.
+        // also wird jeder barcode pos1 pos2 nur einmal aufgerufen. SCHÖNER machen!
         expFalseDetectPerSample[barcode].add(pos1, pos2, counts);
         weightsPerSample[barcode].add(pos1, pos2, seqSum);
     }
@@ -132,6 +133,7 @@ namespace processing {
                     //TODO auskommentiert?
                     sumsPerSample_perBase[barcode][i].clear();
                 }
+
                 medianExpKappaTotal_perBase_perSample[barcode][actualPos1] = medians;
 
             }
@@ -179,7 +181,6 @@ namespace processing {
                     if(wtBase1 != mnucl) {
                         int idx = 4*(mnucl-1)+wtBase2-1;
                         if(countvalues[idx] > 0 && !std::isnan(countvalues[idx]))
-                            //TODO refactor: warum multiset?? sollte ja bloß ein value drin stehen oder?
                             sumsPerSample_perBase[barcode][i].insert(countvalues[idx]);
                         sum += countvalues[idx];
                         //std::cout << pos1 <<" "<<pos2 << " " << barcode << " Multiset " << i << std::endl;
@@ -436,7 +437,7 @@ namespace processing {
 							//counts of Wt - Wt
 							int boundNumWtWt = boundCounts[(wtBase1-1)*4+wtBase2-1];
 							int unboundNumWtWt = unboundCounts[(wtBase1-1)*4+wtBase2-1];
-							
+
 							//counts of all sequences of this position pair
 							double boundCountSum = boundCounts.sum();
 							double unboundCountSum = unboundCounts.sum();					
@@ -471,9 +472,9 @@ namespace processing {
                                         }
 
 										double denominator = boundCounts[idx]/boundNumWtWt-noiseBound;
-										double nominator = unboundCounts[idx]/unboundNumWtWt-noiseUnbound; 
+										double nominator = unboundCounts[idx]/unboundNumWtWt-noiseUnbound;
 
-										data.signal2noiseBound_perPos[pos1][i].push_back(boundCounts[idx]/(boundNumWtWt*noiseBound));
+                                        data.signal2noiseBound_perPos[pos1][i].push_back(boundCounts[idx]/(boundNumWtWt*noiseBound));
 										data.signal2noiseUnbound_perPos[pos1][i].push_back(unboundCounts[idx]/(unboundNumWtWt*noiseUnbound));
 
                                         data.mutRateBound_perPos[pos1][i].push_back(boundCounts[idx]/boundCountSum);
@@ -698,7 +699,8 @@ namespace processing {
                                     pvalues.push_back(min(numberOfKDs_smallerZero[pos1][mut],
                                                           numberOfKDs_greaterZero[pos1][mut]) /
                                                               (double) numberOfKdsIncludingUpperLower);
-                                    //rememeber index of pvalue
+
+                                        //rememeber index of pvalue
                                     pvaluesIdx[pos1][mut] = numPValues;
                                     //count number of considered pvalues
                                     ++numPValues;
@@ -725,7 +727,8 @@ namespace processing {
 //		#pragma omp parallel for schedule(guided, 10) default(none) shared(std::cout, param, data, numPValues, pvalues, sortedPValueIndices, pvalueSmallerAlpha)
         for(int i = 0; i < numPValues; ++i) {
                 //pvalues[sortedPValueIndices[i]] *=((double)numPValues/(i+1.f));
-                pvalues[sortedPValueIndices[i]] = std::min<double>(1.f,  pvalues[sortedPValueIndices[i]] *((double)numPValues/(i+1.f)));
+                //TODO WORKAROUND: take raw pavlues and create a new correction routine. Otherwise clearly signficiant results get kicked out
+                //pvalues[sortedPValueIndices[i]] = std::min<double>(1.f,  pvalues[sortedPValueIndices[i]] *((double)numPValues/(i+1.f)));
                 //remember pvalues smaller alpha
                 pvalueSmallerAlpha[sortedPValueIndices[i]] = pvalues[sortedPValueIndices[i]] < param.alpha;
 		}
